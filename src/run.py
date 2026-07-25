@@ -109,6 +109,14 @@ def main(argv=None) -> int:
     header("[6/7]", "EFFECT - unadjusted, CUPED, and peeking")
     ana = analyze.analyse(cells)
     analyze.report(ana)
+
+    print()
+    print("  full 12-covariate ANCOVA (no extra Spark pass - the cross-product")
+    print("  matrix stage 1 emits is all it needs):")
+    from src import ancova
+    anc_res = ancova.run(cells, index_r2=ingest_out["covariate_model"]["fit_r2"])
+    ancova.report(anc_res)
+
     print()
     seq_res = sequential.run(cells)
     sequential.report(seq_res)
@@ -132,11 +140,20 @@ def main(argv=None) -> int:
     print(f"\n{BAR}\nDECISION\n{BAR}")
     summary = build_summary(ingest_out, srm_res, bal_res, pow_res, ana,
                             seq_res, rob_res, hte_res, args, t0)
+    summary["ancova"] = anc_res
     print_verdict(summary)
 
     config.SUMMARY_JSON.write_text(json.dumps(summary, indent=2))
-    print(f"\n  wrote {config.SUMMARY_JSON.relative_to(config.REPO_ROOT)}  "
-          f"({time.time() - t0:.1f}s total)")
+    print(f"\n  wrote {config.SUMMARY_JSON.relative_to(config.REPO_ROOT)}")
+
+    try:
+        from src import plots
+        made = plots.run(verbose=False)
+        print(f"  wrote {len(made)} figures to results/figures/")
+    except ImportError:
+        print("  (matplotlib not installed - skipping figures)")
+
+    print(f"  {time.time() - t0:.1f}s total")
     return 0
 
 

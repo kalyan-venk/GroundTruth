@@ -1,0 +1,22 @@
+{
+  "n_covariates": 12,
+  "effect_pooled_slope": 0.0009158322953970316,
+  "effect_lin_interacted": 0.0010016583676443285,
+  "se_pooled": 3.791505009279817e-05,
+  "se_lin": 3.2374721937242076e-05,
+  "relative_lift_pooled": 0.4283147401587763,
+  "relative_lift_lin": 0.4885663855916353,
+  "relative_ci_pooled": [
+    0.39356058025489216,
+    0.4630689000626604
+  ],
+  "relative_ci_lin": [
+    0.45761656746028523,
+    0.5195162037229853
+  ],
+  "adjusted_control_mean": 0.002138222688898198,
+  "r2_control": 0.11056680293062793,
+  "r2_index_only": 0.10557021798968275,
+  "r2_gain_from_all_features": 0.004996584940945181,
+  "verdict": "Adjusting on all 12 covariates gives +0.091583 pp (pooled slope) and +0.100166 pp (Lin, per-arm slopes). The control-arm fit reaches R^2 = 0.1106 against 0.1056 for the single collapsed index, so the collapse costs 0.0050 of R^2 - which is why the CUPED stage can use one covariate without apology."
+}

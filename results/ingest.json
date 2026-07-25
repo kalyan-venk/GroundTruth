@@ -31,7 +31,67 @@
     "duplicate_rows_treatment": 1210496,
     "duplicate_share_treatment": 0.10187083610523069,
     "duplicate_rows_control": 49049,
-    "duplicate_share_control": 0.023390783795602825
+    "duplicate_share_control": 0.023390783795602825,
+    "order_dependence": {
+      "n_blocks": 10,
+      "by_block": [
+        {
+          "block": 0,
+          "n": 1397960,
+          "treatment_share": 1.0
+        },
+        {
+          "block": 1,
+          "n": 1397959,
+          "treatment_share": 1.0
+        },
+        {
+          "block": 2,
+          "n": 1397959,
+          "treatment_share": 1.0
+        },
+        {
+          "block": 3,
+          "n": 1397959,
+          "treatment_share": 0.9856662462919156
+        },
+        {
+          "block": 4,
+          "n": 1397959,
+          "treatment_share": 0.13382724386051378
+        },
+        {
+          "block": 5,
+          "n": 1397960,
+          "treatment_share": 0.8700442072734557
+        },
+        {
+          "block": 6,
+          "n": 1397959,
+          "treatment_share": 0.9138923244530062
+        },
+        {
+          "block": 7,
+          "n": 1397959,
+          "treatment_share": 0.797094192318945
+        },
+        {
+          "block": 8,
+          "n": 1397959,
+          "treatment_share": 0.9745192813237012
+        },
+        {
+          "block": 9,
+          "n": 1397959,
+          "treatment_share": 0.8249576704323947
+        }
+      ],
+      "min_share": 0.13382724386051378,
+      "max_share": 1.0,
+      "spread": 0.8661727561394862,
+      "shuffled": false,
+      "note": "Treatment share by position in the file. A shuffled log is flat here. A spread this large means the file was assembled from blocks, so positional samples and positional splits are unsafe."
+    }
   },
   "covariate_model": {
     "n_folds": 2,
@@ -102,5 +162,5 @@
   "observed_ratio_label": "85/15",
   "total_rows": 13979592,
   "cells_parquet": "/Users/kalyanvenkatesh/Me/GroundTruth/data/aggregate/cells.parquet",
-  "elapsed_seconds": 33.0
+  "elapsed_seconds": 36.9
 }

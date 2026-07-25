@@ -314,9 +314,62 @@ def _data_quality(df, spark):
             (row["rows"] - row["distinct"]) / row["rows"]
         )
 
-    return {
+    out = {
         k: (float(v) if k.startswith("duplicate_share") else int(v))
         for k, v in checks.items()
+    }
+    out["order_dependence"] = _order_dependence(df)
+    return out
+
+
+def _order_dependence(df, n_blocks: int = 10):
+    """Is treatment assignment correlated with position in the file?
+
+    A shuffled log has the same treatment share in every block of rows. This
+    one does not: the first 35% of rows are 100% treatment, the last 5% are
+    100% treatment, and the middle swings between 49% and 99%. That is a file
+    assembled by concatenating blocks, not one produced by a randomiser -
+    stronger evidence for construction than the SRM under-dispersion check,
+    because no assignment mechanism yields 4.9 million consecutive treated
+    users.
+
+    It also has a practical bite that has nothing to do with inference: any
+    sample taken with head, LIMIT, or a positional train/test split contains
+    one arm only. A test in this repo hit exactly that and produced a sample
+    with no control users in it.
+    """
+    from pyspark.sql import Window
+    from pyspark.sql import functions as F
+
+    total = df.count()
+    block = F.floor(
+        (F.row_number().over(Window.orderBy(F.monotonically_increasing_id())) - 1)
+        * n_blocks / total
+    )
+    shares = (
+        df.withColumn("_block", F.least(block, F.lit(n_blocks - 1)))
+          .groupBy("_block")
+          .agg(F.avg(F.col("treatment").cast("double")).alias("share"),
+               F.count(F.lit(1)).alias("n"))
+          .orderBy("_block")
+          .collect()
+    )
+    by_block = [{"block": int(r["_block"]), "n": int(r["n"]),
+                 "treatment_share": float(r["share"])} for r in shares]
+    vals = [b["treatment_share"] for b in by_block]
+
+    return {
+        "n_blocks": n_blocks,
+        "by_block": by_block,
+        "min_share": min(vals),
+        "max_share": max(vals),
+        "spread": max(vals) - min(vals),
+        "shuffled": (max(vals) - min(vals)) < 0.01,
+        "note": (
+            "Treatment share by position in the file. A shuffled log is flat "
+            "here. A spread this large means the file was assembled from "
+            "blocks, so positional samples and positional splits are unsafe."
+        ),
     }
 
 
@@ -339,6 +392,13 @@ def run(verbose: bool = True) -> dict:
         print(f"  duplicate share by arm   treatment "
               f"{quality['duplicate_share_treatment']:.2%}, control "
               f"{quality['duplicate_share_control']:.2%}")
+        od = quality["order_dependence"]
+        bars = " ".join(f"{b['treatment_share']:.0%}" for b in od["by_block"])
+        print(f"  treat share by position  {bars}")
+        if not od["shuffled"]:
+            print(f"  ! file is not shuffled   treatment share swings "
+                  f"{od['min_share']:.0%}-{od['max_share']:.0%} across the file; "
+                  f"positional samples are unsafe")
         print(f"  exposed                  {quality['exposed']:,}")
         print(f"  converted without visit  {quality['converted_without_visit']:,}")
 
