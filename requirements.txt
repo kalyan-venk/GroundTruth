@@ -4,3 +4,8 @@ numpy==1.26.4
 scipy==1.13.1
 statsmodels==0.14.2
 pyarrow==16.1.0
+# pyspark 3.5.1 still imports distutils inside pandas-conversion paths
+# (toPandas / createDataFrame). Python 3.12 dropped distutils from the stdlib,
+# so without setuptools' shim every toPandas() call raises ModuleNotFoundError.
+setuptools==69.5.1
+

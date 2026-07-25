@@ -1,0 +1,74 @@
+{
+  "schema": [
+    "f0",
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "f6",
+    "f7",
+    "f8",
+    "f9",
+    "f10",
+    "f11",
+    "treatment",
+    "conversion",
+    "visit",
+    "exposure"
+  ],
+  "source_file": "/Users/kalyanvenkatesh/Me/GroundTruth/data/raw/criteo-research-uplift-v2.1.csv",
+  "quality": {
+    "rows": 13979592,
+    "bad_treatment": 0,
+    "bad_conversion": 0,
+    "bad_visit": 0,
+    "bad_exposure": 0,
+    "exposed": 428212,
+    "converted_without_visit": 0,
+    "distinct_rows": 12720047,
+    "exact_duplicate_rows": 1259545
+  },
+  "covariate_model": {
+    "intercept": -0.21881847013558314,
+    "coefficients": {
+      "f0": -4.171225484024977e-05,
+      "f1": 0.004113494702708707,
+      "f2": -0.0011135867852059562,
+      "f3": -0.00025374684710038333,
+      "f4": 0.03510278360958437,
+      "f5": -0.0015803037276163944,
+      "f6": -6.1848562645524e-05,
+      "f7": -0.0004217682033539887,
+      "f8": -0.007106725209166416,
+      "f9": 6.032263273669036e-05,
+      "f10": -0.03380859274964421,
+      "f11": -0.2539627273464605
+    },
+    "fit_rows": 523975,
+    "fit_r2": 0.10714326971470545,
+    "fit_seed": 7,
+    "fit_population": "control arm only, 25% sample"
+  },
+  "arms": {
+    "treatment": {
+      "n": 11882655,
+      "conversions": 36711,
+      "visits": 576824,
+      "exposed": 428212,
+      "conversion_rate": 0.0030894610674129645
+    },
+    "control": {
+      "n": 2096937,
+      "conversions": 4063,
+      "visits": 80105,
+      "exposed": 0,
+      "conversion_rate": 0.0019375880152813366
+    }
+  },
+  "observed_treatment_share": 0.8500001287591226,
+  "observed_ratio_label": "85/15",
+  "total_rows": 13979592,
+  "cells_parquet": "/Users/kalyanvenkatesh/Me/GroundTruth/data/aggregate/cells.parquet",
+  "elapsed_seconds": 21.5
+}
