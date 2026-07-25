@@ -154,6 +154,73 @@ def test_unadjusted_matches_scipy_on_a_known_effect():
     assert res.absolute_effect == pytest.approx(p_t - p_c, abs=1e-6)
 
 
+def test_relative_ci_accounts_for_baseline_uncertainty():
+    """The ratio interval must not treat the control mean as a known constant.
+
+    Regression test for a real bug. The first version divided the absolute CI
+    by the control mean, which produced intervals 1.49x too narrow on the real
+    data. The docstring defending it argued the baseline's own error was
+    "second-order"; it is not, because control is the small arm in an 85/15
+    split and therefore carries most of the variance.
+
+    Checked against the Katz log interval computed independently here.
+    """
+    n_t, n_c, p_t, p_c = 11_882_655, 2_096_937, 0.0030894610674, 0.0019375880153
+    y_t = np.array([1.0] * round(n_t * p_t) + [0.0] * (n_t - round(n_t * p_t)))
+    y_c = np.array([1.0] * round(n_c * p_c) + [0.0] * (n_c - round(n_c * p_c)))
+    x_t, x_c = np.zeros(n_t), np.zeros(n_c)
+
+    res = analyze.unadjusted_test(analyze.moments(**sums_from(y_t, x_t)),
+                                  analyze.moments(**sums_from(y_c, x_c)))
+
+    se_log = math.sqrt((1 - p_t) / (n_t * p_t) + (1 - p_c) / (n_c * p_c))
+    lo = math.exp(math.log(p_t / p_c) - 1.959964 * se_log) - 1
+    hi = math.exp(math.log(p_t / p_c) + 1.959964 * se_log) - 1
+
+    assert res.relative_ci_low == pytest.approx(lo, rel=1e-3)
+    assert res.relative_ci_high == pytest.approx(hi, rel=1e-3)
+
+    # And it must be materially wider than the naive fixed-baseline interval.
+    naive_width = (res.ci_high - res.ci_low) / p_c
+    assert (res.relative_ci_high - res.relative_ci_low) / naive_width > 1.3
+
+
+def test_adjusted_lift_uses_the_adjusted_baseline():
+    """CUPED's relative lift must divide by CUPED's own control mean.
+
+    Regression test. Dividing an adjusted numerator by the unadjusted control
+    mean reported +50.76% where the consistent figure was +47.27%. It is the
+    wrong denominator under CUPED's own premise -- the argument for adjusting
+    is that the unadjusted control mean carries the imbalance.
+    """
+    mt, mc = _synthetic_experiment(rho=0.7, effect=0.01, shift=0.05)
+    unadj = analyze.unadjusted_test(mt, mc)
+    res = analyze.cuped(mt, mc, unadj, "x", covariate_is_pre_assignment=True)
+
+    implied = res.test.mean_treatment / res.test.mean_control - 1.0
+    assert res.test.relative_lift == pytest.approx(implied, rel=1e-9)
+
+    wrong = res.test.absolute_effect / mc.mean_y
+    assert res.test.relative_lift != pytest.approx(wrong, rel=1e-6)
+
+
+def test_variance_reduction_decomposes_by_arm_weight():
+    """Observed reduction must equal the Var(diff)-weighted mix of arm reductions.
+
+    This is the identity that explains why the observed 10.70% on the real data
+    sits below the pooled rho^2 of 11.81%: what gets reduced is
+    var_t/n_t + var_c/n_c, so each arm's reduction counts in proportion to its
+    share of that sum, and in an 85/15 split control carries 78% of it.
+    """
+    mt, mc = _synthetic_experiment(n_t=600_000, n_c=150_000, rho=0.6)
+    unadj = analyze.unadjusted_test(mt, mc)
+    res = analyze.cuped(mt, mc, unadj, "x", covariate_is_pre_assignment=True)
+
+    assert res.achievable_variance_reduction == pytest.approx(
+        res.observed_variance_reduction, abs=1e-9)
+    assert res.control_share_of_variance > 0.5   # small arm dominates
+
+
 def test_no_effect_gives_a_boring_p_value():
     y_t = RNG.binomial(1, 0.02, 100_000).astype(float)
     y_c = RNG.binomial(1, 0.02, 100_000).astype(float)

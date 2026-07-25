@@ -109,8 +109,8 @@ class TestResult:
 
 
 def _difference_test(label, mean_t, var_t, n_t, mean_c, var_c, n_c,
-                     baseline_for_lift, alpha=config.ALPHA) -> TestResult:
-    """Welch-style z-test on a difference of arm means.
+                     alpha=config.ALPHA) -> TestResult:
+    """Welch-style z-test on a difference of arm means, plus a ratio interval.
 
     Welch (unpooled variances) rather than a pooled-variance test on purpose.
     The pooled version assumes the two arms have the same variance, which is
@@ -119,11 +119,22 @@ def _difference_test(label, mean_t, var_t, n_t, mean_c, var_c, n_c,
     all. With arms this size the difference is small, but assuming equal
     variance to save a term you already have is a bad habit.
 
-    The relative lift interval divides the absolute interval by the control
-    baseline, which treats that baseline as fixed. That understates the true
-    uncertainty slightly. With 2.1M control users the baseline's own standard
-    error is about 1% of its value, so the omitted term is second-order - but
-    it is an approximation and not an exact interval.
+    The relative-lift interval is the log (Katz) interval on the ratio of the
+    two arm means, not the absolute interval divided by the control mean.
+
+        log(m_t/m_c) +/- z * sqrt( var_t/(n_t*m_t^2) + var_c/(n_c*m_c^2) )
+
+    An earlier version of this function did divide by a fixed control mean, on
+    the argument that the baseline's own sampling error was second-order. That
+    argument was wrong and the resulting intervals were 1.49x too narrow. The
+    baseline's relative standard error here is 1.567% while the difference's
+    own relative standard error is 1.774% - the same order, not one order down.
+    It is wrong for a specific and slightly embarrassing reason: control is the
+    small arm in an 85/15 split, which is exactly the fact the power stage
+    spends a section explaining.
+
+    For a binary metric, var = p(1-p), and this reduces to the familiar
+    (1-p)/(n*p) form of the Katz interval for a risk ratio.
     """
     se = math.sqrt(var_t / n_t + var_c / n_c)
     diff = mean_t - mean_c
@@ -131,6 +142,15 @@ def _difference_test(label, mean_t, var_t, n_t, mean_c, var_c, n_c,
     p = float(2.0 * stats.norm.sf(abs(z)))
     crit = float(stats.norm.ppf(1.0 - alpha / 2.0))
     lo, hi = diff - crit * se, diff + crit * se
+
+    if mean_t > 0 and mean_c > 0:
+        se_log = math.sqrt(var_t / (n_t * mean_t ** 2) + var_c / (n_c * mean_c ** 2))
+        log_ratio = math.log(mean_t / mean_c)
+        rel_lo = math.exp(log_ratio - crit * se_log) - 1.0
+        rel_hi = math.exp(log_ratio + crit * se_log) - 1.0
+        rel = mean_t / mean_c - 1.0
+    else:
+        rel = rel_lo = rel_hi = float("nan")
 
     return TestResult(
         label=label,
@@ -143,9 +163,9 @@ def _difference_test(label, mean_t, var_t, n_t, mean_c, var_c, n_c,
         ci_width=float(hi - lo),
         z=float(z),
         p_value=p,
-        relative_lift=float(diff / baseline_for_lift),
-        relative_ci_low=float(lo / baseline_for_lift),
-        relative_ci_high=float(hi / baseline_for_lift),
+        relative_lift=float(rel),
+        relative_ci_low=float(rel_lo),
+        relative_ci_high=float(rel_hi),
         var_treatment=float(var_t),
         var_control=float(var_c),
         significant=bool(p < alpha),
@@ -157,7 +177,6 @@ def unadjusted_test(mt: ArmMoments, mc: ArmMoments) -> TestResult:
         "unadjusted",
         mt.mean_y, mt.var_y, mt.n,
         mc.mean_y, mc.var_y, mc.n,
-        baseline_for_lift=mc.mean_y,
     )
 
 
@@ -169,6 +188,10 @@ class CupedResult:
     theta: float
     corr_pooled: float
     theoretical_variance_reduction: float
+    achievable_variance_reduction: float
+    variance_reduction_treatment: float
+    variance_reduction_control: float
+    control_share_of_variance: float
     observed_variance_reduction: float
     observed_ci_width_reduction: float
     covariate_mean_treatment: float
@@ -198,9 +221,19 @@ def cuped(mt: ArmMoments, mc: ArmMoments, unadjusted: TestResult,
 
     Two implementation details that are easy to get wrong.
 
-    *theta comes from the pooled data, not per arm.* Estimating a separate
-    theta in each arm lets the adjustment absorb part of the treatment effect
-    itself, which biases the estimate toward zero. One theta, both arms.
+    *theta comes from the pooled data, not per arm.* This is the conventional
+    CUPED formulation and it is what Deng et al. describe. The reason is
+    simplicity rather than correctness: one theta means one adjustment applied
+    identically to both arms, so the adjustment cannot introduce a difference
+    between them that was not already there.
+
+    An earlier draft of this docstring claimed per-arm theta "biases the
+    estimate toward zero", which is wrong, and it contradicted the docstring on
+    lin_estimator() 130 lines below asserting the opposite. Per-arm slopes are
+    *better*, not worse -- that is Lin's (2013) result, and it is why this
+    module computes both. Pooled theta is the default here because it is what
+    "CUPED" conventionally means; Lin is the robustness check. Where they
+    disagree, Lin is the one to trust.
 
     *The centring constant is the pooled mean, not the arm mean.* Centring on
     each arm's own mean would force both adjusted means to equal their
@@ -224,15 +257,41 @@ def cuped(mt: ArmMoments, mc: ArmMoments, unadjusted: TestResult,
     var_t = mt.var_y - 2 * theta * mt.cov_yx + theta ** 2 * mt.var_x
     var_c = mc.var_y - 2 * theta * mc.cov_yx + theta ** 2 * mc.var_x
 
+    # Both means passed here are the ADJUSTED ones, so the relative lift comes
+    # out as adjusted_treatment / adjusted_control - 1.
+    #
+    # An earlier version divided the adjusted difference by the *unadjusted*
+    # control mean, which reported +50.76% where the internally consistent
+    # figure is +47.27%. That is indefensible under this stage's own premise:
+    # the whole argument for adjusting is that the unadjusted control mean
+    # inherits the covariate imbalance, so it is the one denominator you must
+    # not use. It also happened to be the choice that made the number bigger,
+    # which is how that class of error usually survives review.
     test = _difference_test(
         f"cuped[{covariate_name}]",
         mean_t, var_t, mt.n,
         mean_c, var_c, mc.n,
-        baseline_for_lift=mc.mean_y,
     )
 
     var_reduction = 1.0 - (test.se ** 2) / (unadjusted.se ** 2)
     ci_reduction = 1.0 - test.ci_width / unadjusted.ci_width
+
+    # Why the observed reduction misses the rho^2 headline number.
+    #
+    # "CUPED removes about rho^2 of the variance" is stated for a single
+    # population. What actually gets reduced here is Var(m_t - m_c) =
+    # var_t/n_t + var_c/n_c, so the achievable reduction is the two arms' own
+    # reductions weighted by how much each contributes to that sum. In an 85/15
+    # split the small arm carries most of it, so the pooled rho^2 is simply the
+    # wrong benchmark - it is not a shortfall to explain away.
+    #
+    # On this data: per-arm reductions 11.98% and 10.34%, control carrying
+    # 78.06% of Var(diff), giving 0.2194*11.98 + 0.7806*10.34 = 10.70% - which
+    # is exactly what the line above computes.
+    red_t = 1.0 - (mt.var_y - 2 * theta * mt.cov_yx + theta ** 2 * mt.var_x) / mt.var_y
+    red_c = 1.0 - (mc.var_y - 2 * theta * mc.cov_yx + theta ** 2 * mc.var_x) / mc.var_y
+    share_c = (mc.var_y / mc.n) / (mt.var_y / mt.n + mc.var_y / mc.n)
+    expected_reduction = (1.0 - share_c) * red_t + share_c * red_c
 
     # Is the covariate balanced across arms? For a genuine pre-assignment
     # covariate it must be, up to noise - randomisation guarantees it. If it is
@@ -298,6 +357,10 @@ def cuped(mt: ArmMoments, mc: ArmMoments, unadjusted: TestResult,
         theta=float(theta),
         corr_pooled=float(rho),
         theoretical_variance_reduction=float(rho ** 2),
+        achievable_variance_reduction=float(expected_reduction),
+        variance_reduction_treatment=float(red_t),
+        variance_reduction_control=float(red_c),
+        control_share_of_variance=float(share_c),
         observed_variance_reduction=float(var_reduction),
         observed_ci_width_reduction=float(ci_reduction),
         covariate_mean_treatment=float(mt.mean_x),
@@ -346,8 +409,7 @@ def lin_estimator(mt: ArmMoments, mc: ArmMoments,
     var_t = mt.var_y - 2 * theta_t * mt.cov_yx + theta_t ** 2 * mt.var_x
     var_c = mc.var_y - 2 * theta_c * mc.cov_yx + theta_c ** 2 * mc.var_x
 
-    test = _difference_test("lin", mean_t, var_t, mt.n, mean_c, var_c, mc.n,
-                            baseline_for_lift=mc.mean_y)
+    test = _difference_test("lin", mean_t, var_t, mt.n, mean_c, var_c, mc.n)
     return {
         "theta_treatment": float(theta_t),
         "theta_control": float(theta_c),
@@ -380,6 +442,14 @@ def cace(itt_effect: float, itt_se: float, compliance_rate: float,
     assignment affects the outcome only through exposure. The second is an
     assumption, not a fact, and it is the one that would break if being
     assigned to treatment changed anything else about a user's experience.
+
+    On the standard error: this divides the ITT's SE by the compliance rate,
+    which treats the compliance rate as known rather than estimated. The proper
+    delta-method SE for a ratio adds a term in var(pi). It is not worth adding
+    here and the reason is worth stating rather than assuming - the compliance
+    rate's relative standard error is 0.15% against the ITT's 2.98%, so the
+    delta-method SE is 1.0013x the naive one. Three digits in. If compliance
+    were measured on a small sample that would stop being true.
     """
     est = itt_effect / compliance_rate
     se = itt_se / compliance_rate
@@ -416,7 +486,16 @@ def analyse(cells) -> dict:
 
     lin = lin_estimator(safe_t, safe_c, unadj)
     compliance = float(t.sum_exposure) / float(t.n)
-    cace_res = cace(unadj.absolute_effect, unadj.se, compliance)
+
+    # One CACE per ITT estimate, not just the unadjusted one. Reporting the
+    # CACE built on the unadjusted ITT while recommending the adjusted ITT
+    # would put two numbers in the same summary that disagree by 17%.
+    cace_res = {
+        name: cace(r["absolute_effect"], r["se"], compliance)
+        for name, r in (("unadjusted", unadj.as_dict()),
+                        ("cuped", cuped_safe.test.as_dict()),
+                        ("lin", lin["test"]))
+    }
 
     return {
         "unadjusted": unadj.as_dict(),
@@ -441,16 +520,24 @@ def report(res: dict) -> None:
               f"{'[' + format(r['ci_low']*100, '.6f') + ', ' + format(r['ci_high']*100, '.6f') + ']':>26}"
               f"{r['p_value']:>13.3e}")
     print()
-    print(f"  relative lift            {u['relative_lift']:>+.2%}  "
-          f"[{u['relative_ci_low']:+.2%}, {u['relative_ci_high']:+.2%}]  unadjusted")
-    print(f"                           {s['test']['relative_lift']:>+.2%}  "
-          f"[{s['test']['relative_ci_low']:+.2%}, {s['test']['relative_ci_high']:+.2%}]  CUPED")
+    print("  relative lift, log (Katz) interval on the ratio of arm means:")
+    rows = [("unadjusted", u), ("CUPED", s["test"])]
+    if "lin_robustness" in res:
+        rows.append(("Lin", res["lin_robustness"]["test"]))
+    for tag, r in rows:
+        print(f"    {tag:<12}{r['relative_lift']:>+9.2%}  "
+              f"[{r['relative_ci_low']:+.2%}, {r['relative_ci_high']:+.2%}]")
     print()
     print(f"  CUPED covariate          {s['covariate']} (pre-assignment)")
     print(f"  theta                    {s['theta']:.6f}")
     print(f"  corr(Y, X) pooled        {s['corr_pooled']:.4f}")
-    print(f"  variance reduction       {s['observed_variance_reduction']:.2%}   "
-          f"(theory, rho^2: {s['theoretical_variance_reduction']:.2%})")
+    print(f"  variance reduction       {s['observed_variance_reduction']:.2%}")
+    print(f"    per arm                treatment {s['variance_reduction_treatment']:.2%}, "
+          f"control {s['variance_reduction_control']:.2%}")
+    print(f"    control's weight       {s['control_share_of_variance']:.2%} of Var(diff) "
+          f"-> achievable {s['achievable_variance_reduction']:.2%}")
+    print(f"    pooled rho^2           {s['theoretical_variance_reduction']:.2%}  "
+          f"(the wrong benchmark for an unbalanced split)")
     print(f"  CI width reduction       {s['observed_ci_width_reduction']:.2%}   "
           f"(= 1 - sqrt(1 - variance reduction); these are different numbers)")
     print(f"  point estimate moved     {s['point_estimate_shift_pct']:+.3%}   "
@@ -460,9 +547,8 @@ def report(res: dict) -> None:
     if "lin_robustness" in res:
         li = res["lin_robustness"]
         print(f"  Lin robustness check     theta per arm "
-              f"{li['theta_treatment']:.4f} / {li['theta_control']:.4f}, "
-              f"effect {li['test']['absolute_effect']*100:.6f} pp "
-              f"({li['test']['relative_lift']:+.2%})")
+              f"{li['theta_treatment']:.4f} / {li['theta_control']:.4f} "
+              f"(gap {li['theta_gap']:+.4f} = a treatment-by-covariate interaction)")
     print()
     print(f"  contrast: CUPED on '{n['covariate']}' (the tempting wrong choice)")
     print(f"    variance reduction     {n['observed_variance_reduction']:.2%}")
@@ -472,10 +558,13 @@ def report(res: dict) -> None:
           f"p={n['covariate_imbalance_p']:.2e}")
     print()
     cc = res["cace"]
-    print(f"  compliance (exposed)     {cc['compliance_rate']:.2%} of treatment; "
-          f"0% of control")
-    print(f"  CACE among exposed       {cc['cace_absolute']*100:+.4f} pp  "
-          f"[{cc['cace_ci_low']*100:+.4f}, {cc['cace_ci_high']*100:+.4f}]")
+    print(f"  compliance (exposed)     {cc['unadjusted']['compliance_rate']:.2%} "
+          f"of treatment; 0% of control")
+    print("  CACE among exposed, one per ITT estimate:")
+    for tag in ("unadjusted", "cuped", "lin"):
+        c = cc[tag]
+        print(f"    {tag:<12}{c['cace_absolute']*100:>+9.4f} pp  "
+              f"[{c['cace_ci_low']*100:+.4f}, {c['cace_ci_high']*100:+.4f}]")
 
     import textwrap
     for tag, w in (("CUPED", s["warning"]), ("naive contrast", n["warning"])):
