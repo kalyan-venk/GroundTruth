@@ -1,248 +1,291 @@
 # GroundTruth
 
-An A/B test analysis pipeline on the Criteo Uplift log — 13,979,592 rows through
-Spark, four statistical stages, one ship/no-ship verdict. The point of the
-project is experimental rigor, not model training: validate the experiment,
-size it, measure it, and be honest about what the measurement is worth.
+Experimentation analysis on the Criteo Uplift log: 13,979,592 rows through
+Spark, six validity checks, and a ship/no-ship recommendation with the
+caveats attached. Runs end to end in about three minutes on a laptop.
 
 ```bash
-bash scripts/get_data.sh          # 311 MB download, decompresses to 3 GB
-python -m src.run                 # full pipeline, ~33 seconds
-python -m src.run --skip-spark    # stats only, reuses the aggregate
-python -m pytest tests/ -q        # 22 tests
+bash scripts/get_data.sh          # 311 MB download
+python -m src.run                 # everything
+python -m src.run --fast          # skip the two extra Spark passes
+python -m pytest tests/ -q        # 28 tests
 ```
 
-Every number below comes out of `results/summary.json`, written by that run.
+Every number here comes from `results/summary.json`, written by that run.
 
 ---
 
-## Result
+## The recommendation
 
-**Ship.** The campaign lifts conversion, and the effect is nowhere near the
-noise floor.
+**Ship it, and target it.**
 
-| | effect (pp) | 95% CI | relative lift | p |
-|---|---|---|---|---|
-| unadjusted | +0.115187 | [+0.108451, +0.121924] | **+59.45%** | 3.2e-246 |
-| CUPED-adjusted | +0.098359 | [+0.091993, +0.104725] | **+50.76%** | 2.0e-201 |
-| Lin (robustness) | +0.101138 | — | +52.20% | — |
+Conversion rises 47.4% in relative terms (95% CI +43.2% to +51.7%). The bar I
+set for "worth shipping" is a 10% relative lift; the weakest lower bound across
+every specification I tried is +38.6%, so the decision holds however the data
+is handled.
 
-The headline is the **adjusted** number, not the raw one, and the reason is the
-most interesting thing this pipeline found. More below.
+Then targeting, which is where the money is. 95% of the incremental conversions
+come from the top 30% of users by predicted uplift. Roughly 70% of the ad spend
+could go without losing much.
+
+![uplift by decile](results/figures/05-uplift.png)
+
+**What would change my mind.** This log is not a clean randomised experiment
+and should not be presented as one. The 85/15 split is constructed rather than
+randomised, the arms differ on every observed pre-assignment feature, and the
+measured magnitude moves by a factor of two depending on how you treat 1.26
+million duplicate rows. The direction and the ship decision survive all of
+that. The precise number does not, and no adjustment fixes imbalance on
+features nobody recorded.
 
 | | |
 |---|---|
-| SRM p-value | 0.9989 (pass — and see the caveat) |
-| Observed split | 85/15, off by 2 users out of 13,979,592 |
-| MDE (pre-specified) | 5% relative |
-| Required N | 1,949,765 control users at the 85/15 allocation |
-| Variance removed by CUPED | 10.70% |
-| CI width removed by CUPED | 5.50% |
-| Effect among users actually exposed | +3.196 pp |
+| leading estimate | +47.4% relative (CUPED-adjusted) |
+| across all specifications | +42.1% to +85.4% |
+| bar to clear | +10% relative (stated assumption, not a measured break-even) |
+| worst-case lower bound | +38.6% |
+| effect among users actually shown an ad | +2.73 pp |
+| Qini coefficient | 0.814 |
 
 ---
 
-## What the pipeline does
+## The guardrails, and what each one catches
 
-```
-scripts/get_data.sh   fetch and decompress the raw log
-src/ingest.py         [1]  Spark: 13.9M rows -> per-arm sufficient statistics
-src/srm.py            [2]  sample ratio mismatch, the count guardrail
-src/balance.py        [2b] covariate balance, the composition guardrail
-src/power.py          [3]  MDE and required N, computed before the effect
-src/analyze.py        [4]  two-proportion z-test, CUPED, Lin, CACE
-src/run.py            [5]  orchestration, verdict, results/summary.json
-tests/test_stats.py        22 tests against known-answer synthetic data
-```
+Six checks run before any effect is computed. They catch different failures,
+and on this dataset three of them fire.
 
-Guardrails run before the effect is computed and the run exits non-zero if SRM
-fails. Power runs before that, because a design question you answer after
-seeing the result is not a design question any more.
+| check | asks | result here |
+|---|---|---|
+| SRM | do the arms have the right *number* of users? | pass, suspiciously well |
+| under-dispersion | is the split *too* close to design? | **fires** — ratio is exactly 17:3 |
+| row-order | is assignment correlated with position in the file? | **fires** — 13% to 100% by block |
+| balance | do the arms hold the same *kind* of user? | **fires** — all 12 features differ |
+| specification curve | does the answer depend on a cleaning choice? | **fires** — 1.44x spread |
+| peeking | would early looks have inflated the error rate? | 28.8% at 30 looks |
 
-### Spark's actual job
+### SRM passes, and that is the problem
 
-Every test here touches the raw 13.9M rows only through a handful of sums.
-The z-test needs `n` and `sum(Y)` per arm. CUPED needs
-`theta = Cov(Y,X)/Var(X)`, which comes out of `n`, `sum(X)`, `sum(X²)`,
-`sum(Y)` and `sum(XY)`. All additive, all computable in one pass.
+The split is 85.00/15.00, off by 2 users out of 13,979,592. Chi-square p =
+0.9989.
 
-So Spark computes the sums and the driver never receives more than a couple of
-dozen numbers plus a 12×12 cross-product matrix. That is what makes
-"aggregated 13.9M rows" a real statement rather than a synonym for "read a CSV".
+A chi-square p-value is uniform under the null, so p = 0.9989 is exactly as
+improbable as p = 0.0011. One standard deviation of binomial noise here is
+1,335 users and the arms sit 0.0013 sd apart — random assignment lands that
+close 0.11% of the time.
 
----
+The arm ratio settles it: 5.66667239 against 17/3 = 5.66666667, agreeing to
+seven significant figures. Nothing random produces that. Control was
+downsampled to hit exactly 15%.
 
-## The three things worth reading
+So the check reports under-dispersion next to the pass. A bare green tick would
+imply this validates Criteo's randomiser when it only shows the guardrail runs.
 
-### 1. A perfect SRM pass is a warning sign
-
-The split is 85.00/15.00, off by **2 users out of 13,979,592**. Chi-square
-p = 0.9989. Green tick.
-
-Except a chi-square p-value is uniform under the null, so **p = 0.9989 is
-exactly as improbable as p = 0.0011**. One standard deviation of Bernoulli
-noise at this n is 1,335 users, and the arms sit 0.0013 sd apart. Independent
-random assignment lands that close well under 1% of the time.
-
-The split is almost certainly *constructed* — control downsampled to exactly
-15% after collection. Supporting evidence: exact-duplicate rows run 10.19% in
-treatment against 2.34% in control. That 4x gap looks like a logging fault and
-isn't one. Downsampling an arm to fraction *q* keeps a duplicate *pair* with
-probability *q²*, so duplicate share scales with *q*: 10.19% × (0.15/0.85) =
-1.8%, against 2.34% observed.
-
-So the pipeline reports under-dispersion alongside the pass. A bare green tick
-would imply this validates Criteo's randomiser, when all it demonstrates is
-that the guardrail runs.
-
-The stage also prints what the same counts look like tested against other
-assumed designs, because that choice is the whole test:
+The stage also tests the same counts against other assumed designs, because
+that assumption is the entire test:
 
 | assumed share | chi² | p | |
 |---|---|---|---|
-| 50% | 6,850,005 | 0 | FAIL |
-| 84% | 10,402 | 0 | FAIL |
+| 50% | 6,850,005 | 0 | fail |
+| 84% | 10,402 | 0 | fail |
 | **85%** | **0.0** | **0.999** | **pass** |
-| 86% | 11,611 | 0 | FAIL |
+| 86% | 11,611 | 0 | fail |
 
-Test an 85/15 experiment against a 50/50 default and you get a catastrophic
-p-value on a perfectly healthy experiment. The expected ratio has to come from
-the design document.
+Test an 85/15 experiment against a 50/50 default and a healthy experiment looks
+catastrophic. The expected ratio has to come from the design document.
 
-### 2. SRM passes on counts. The arms still aren't comparable.
+### The file is not shuffled
 
-SRM asks whether the arms have the right *number* of users. It says nothing
-about whether they contain the same *kind*. Here the counts are perfect and the
-composition is not:
+Treatment share by position, in tenths of the file:
 
 ```
-Hotelling T² = 5,142.5  ->  F(12, 13,979,579) = 428.55,  p = 0
-all 12 features imbalanced, largest |SMD| = 0.0488 on f3
+100% 100% 100% 99% 13% 87% 91% 80% 97% 82%
 ```
 
-Every one of the twelve pre-assignment features differs between arms at
-overwhelming significance — f3 at z = −67 — while **every standardised mean
-difference sits under 0.05**, half the conventional 0.1 "negligible" threshold.
-Statistically undeniable, practically trivial by normal standards.
+The first 35% of rows are entirely treatment. So is the last 5%. Any sample
+taken with `head`, `LIMIT`, or a positional train/test split contains one arm.
+A test in this repo hit exactly that and produced a sample with no control
+users in it, which is how the check got written.
 
-It is not trivial here, because the effect is small. The CUPED adjustment term
-is θ × imbalance = 1.2466 × 0.000135 = 0.000168, which is **14.6% of a 0.00115
-effect**. A negligible imbalance eats a sixth of a small effect.
+### Counts pass. Composition does not.
 
-That is the finding: this experiment would pass every guardrail most teams run,
-and its arms are still not exchangeable.
+SRM validates how many users are in each arm. It says nothing about whether
+they are the same kind of user.
 
-### 3. "CUPED must not move the point estimate" needs a yardstick
+![covariate balance](results/figures/01-balance.png)
 
-The rule as usually stated has no scale attached, and that gap cost a test
-failure during the build. An assertion that CUPED moves the estimate by less
-than 5% failed at 16% on synthetic data that was behaving perfectly.
+All twelve pre-assignment features differ at overwhelming significance —
+Hotelling F(12, 13,979,579) = 428.6, p = 0, f3 at z = −67 — while every
+standardised mean difference sits under 0.05, half the conventional 0.1
+threshold. Statistically undeniable, practically trivial by normal standards,
+and still material because the effect is small: the adjustment term is
+θ × imbalance = 0.000168, which is 14.6% of a 0.00115 effect.
 
-Nothing was wrong. Under perfect randomisation the arms still differ on the
-covariate by sampling noise, CUPED corrects that difference, and the size of
-the correction is θ × se(imbalance) — independent of how big the effect is. A
-small effect therefore moves a long way in percentage terms for entirely
-innocent reasons.
+Chance imbalance alone would move the estimate 1.19%. It moved 14.61%. That
+ratio, 12.3x, is what distinguishes a real problem from noise.
 
-The right benchmark is the shift against that chance figure:
+### The duplicate rows decide the answer
 
-```
-point estimate moved     -14.610%   (chance alone would move it 1.191%)
-shift vs chance          12.3x      (~1x is a healthy experiment)
-```
+2,221,150 rows sit in groups of byte-identical duplicates and there is no user
+ID to tell you whether that means one user logged twice or two users who look
+alike. Three defensible readings, all three run:
 
-12.3x is not noise. It is the same 12.3 as the z-score of the covariate
-imbalance, as it has to be. That is why the adjusted estimate leads: the
-covariate is fixed before assignment, so the adjustment corrects the imbalance
-instead of inheriting it.
+![specification curve](results/figures/04-specification-curve.png)
+
+| spec | rows | SRM | max SMD | lift (raw) | lift (CUPED) |
+|---|---|---|---|---|---|
+| all rows | 13,979,592 | p=0.999 pass | 0.049 | +59.45% | +47.36% |
+| dedup | 12,720,047 | p=0 **fail** | 0.085 | +73.38% | +44.24% |
+| singletons only | 11,758,442 | p=0 **fail** | 0.122 | +85.37% | +42.11% |
+
+The perfect SRM pass exists only under the reading I happened to pick. Under
+the other two it fails at over 100 sigma.
+
+I keep all rows, and the evidence rather than convenience is the reason. The
+duplicate rows contain **zero conversions** across 2.22M rows where
+outcome-independent duplication predicts about 7,700, and 8 of the 12 features
+have under 4,000 distinct values (f1 has 60, f5 has 132). A duplicate is
+therefore most likely two different low-activity users colliding on a coarse
+feature grid, not one user double-logged.
+
+The two columns above also settle an argument. The unadjusted lift spans 1.44x
+across specifications; the adjusted one spans 1.12x. Adjustment cuts
+specification sensitivity 3.5x, because changing the duplicate rule changes arm
+composition and covariate adjustment is what absorbs composition differences.
+That, not the 10.7% variance reduction, is the real case for CUPED here.
+
+### Peeking
+
+No test in this repo is valid if you look at it early, and nobody runs an
+experiment without looking. Simulated at these arm sizes:
+
+| looks | actual false-positive rate |
+|---|---|
+| 1 | 5.0% |
+| 10 | 20.3% |
+| 30 | 28.8% |
+
+The fix is an always-valid confidence sequence, which holds at every sample
+size at once. It costs 3.01x the width here — 5.90 standard errors instead of
+1.96 — and the effect survives it. At 14M rows that is cheap. On a two-week
+test it would not be.
 
 ---
 
-## Choices, and why
+## How it runs in three minutes
 
-**Relative MDE, not absolute.** Control converts at 0.1938%. A 1-percentage-point
-absolute MDE — the figure in the project brief — means detecting a 516% lift.
-The sensitivity table makes the point concretely: a 1% *relative* MDE would need
-318 million users, 23x the log.
+Every test here touches the raw 13.9M rows only through sums. The z-test needs
+`n` and `sum(Y)` per arm. CUPED needs `θ = Cov(Y,X)/Var(X)`, which comes from
+`n`, `sum(X)`, `sum(X²)`, `sum(Y)`, `sum(XY)`. Hotelling's T² needs the 12×12
+cross-product matrix. All additive, all computable in one pass.
 
-| relative MDE | control users needed | total needed | achieved power | |
-|---|---|---|---|---|
-| 1% | 47,801,668 | 318,678,061 | 9.0% | underpowered |
-| 2% | 12,009,536 | 80,063,643 | 21.6% | underpowered |
-| **5%** | **1,949,765** | **12,998,445** | **82.8%** | ok |
-| 10% | 499,098 | 3,327,323 | 100% | ok |
-| 20% | 130,508 | 870,055 | 100% | ok |
+So Spark computes the sums and the driver receives a 68 KB parquet file. The
+stats layer never sees a row.
 
-5% was pre-specified in `config.py` before any effect was computed. Inverting
-the power curve, the smallest lift these arms can resolve at 80% power is
-**4.82% relative** — so the pre-specified target sits just inside the floor.
-
-**An 85/15 split costs nearly double the users.** Required N at an unequal
-allocation is `n_balanced × (2 + k + 1/k) / 2` against `2 × n_balanced`
-balanced. At k = 5.67 that is **1.96x**. `Var(diff)` goes as `1/n_t + 1/n_c` and
-the smaller arm dominates the sum, so skewing the split to save on control
-users costs precision fast. Worth knowing before agreeing to one.
-
-**`visit` is the wrong CUPED covariate, and the pipeline shows why.** The brief
-suggests it. It is measured *during* the experiment and the treatment moves it
-by a full percentage point (p = 0), so adjusting on it removes part of the
-causal path. Run anyway, as a labelled contrast:
+That decision pays off twice more. The full 12-covariate ANCOVA needs X'X and
+X'y, which are already in the file, so it costs no Spark pass at all. The
+uplift model is two OLS fits on the same sums — Spark is needed only to score
+and bin rows afterwards.
 
 ```
-CUPED on visit:  variance reduction 4.96%,  point estimate moved -55.73%
+scripts/get_data.sh   fetch and decompress the raw log
+src/ingest.py         Spark: 13.9M rows -> per-arm sufficient statistics
+src/srm.py            sample ratio mismatch + under-dispersion
+src/balance.py        per-feature SMD + Hotelling T2
+src/robustness.py     specification curve over the duplicate decision
+src/power.py          MDE and required N, before the effect is looked at
+src/analyze.py        z-test, CUPED, Lin, CACE
+src/ancova.py         full 12-covariate adjustment
+src/sequential.py     peeking simulation + always-valid interval
+src/hte.py            two-model uplift, deciles, Qini
+src/plots.py          the five figures
+src/run.py            orchestration and the decision
+sql/                  the same aggregation in SQL, cross-checked in tests
+tests/                28 tests against known-answer data
 ```
-
-A tighter interval around a differently-biased number. The covariate used
-instead is an OLS index over `f0..f11` — user attributes fixed before
-assignment — fitted on a held-out control-only sample so the treatment effect
-stays out of the coefficients. R² = 0.107.
-
-**Variance reduction and CI width reduction are different numbers.** CI width
-scales with the square root of variance, so 10.70% variance removed is
-`1 − √(1 − 0.107)` = **5.50%** off the interval. Quoting the variance figure as
-an interval improvement roughly doubles the claim. Both are printed, labelled.
-
-**Intent-to-treat, not treated-on-treated.** Only 3.6% of the treatment arm was
-ever exposed to an ad, and control exposure is exactly 0. Conditioning on
-exposure would condition on a post-randomisation variable and reintroduce the
-selection bias randomisation removed. ITT is the headline. Because the
-noncompliance is one-sided, the Wald estimator is valid and gives the effect
-among users actually reached: **+3.196 pp** [+3.009, +3.383], about 28x the ITT.
-
-**Lin's estimator as a robustness check.** Plain CUPED fits one θ to both arms,
-assuming the covariate relates to the outcome identically under treatment and
-control. Per-arm θ comes out 1.289 and 0.997 — a real treatment-by-covariate
-interaction — so a single pooled θ was misfitting both arms. Lin gives +52.20%
-against CUPED's +50.76%, close enough to each other and far enough from the
-unadjusted +59.45% to make the picture clear.
 
 ---
 
-## What this does not establish
+## Method notes
 
-The arms differ on every observed pre-assignment feature. Adjustment fixes the
-observed part. Nothing fixes the unobserved part.
+**Relative MDE, not absolute.** Control converts at 0.1938%, so a
+1-percentage-point absolute MDE means detecting a 516% lift.
 
-So the true effect is *bracketed* by these estimates rather than pinned by
-either. Somewhere between +50% and +59% relative, with the adjusted end more
-credible and residual confounding from unmeasured features not ruled out. A
-clean experiment would not need that sentence, and saying so is more useful
-than a point estimate with false precision.
+![power curve](results/figures/02-power.png)
 
-Two further limits worth naming. The adjustment uses a single linear index over
-the twelve features; a full ANCOVA on all twelve separately would be the next
-step, and it needs twelve more per-arm sums from Spark. And there is no user ID
-in the file, so "one row per user" cannot be verified by key — the 1,259,545
-exact duplicate rows are reported rather than dropped, since removing them
-would silently move the very split ratio SRM exists to test.
+5% relative was fixed in `config.py` before any effect was computed. Inverting
+the power curve, the smallest lift these arms resolve at 80% power is 4.82%.
+
+An 85/15 split costs nearly double the users of a balanced one: required N goes
+as `n_bal(2 + k + 1/k)/2` against `2·n_bal`, which at k = 5.67 is 1.96x. The
+variance of a difference goes as `1/n_t + 1/n_c` and the smaller arm dominates.
+
+**The covariate is cross-fitted, and `visit` is not used.** The project brief
+suggested `visit`; it is measured during the experiment and treatment moves it
+by a full percentage point, so adjusting on it removes part of the causal path.
+It runs anyway as a labelled contrast, and drags the effect down 55.7%. The
+covariate actually used is an OLS index over `f0..f11`, fitted on control rows
+only and cross-fitted so no row's covariate comes from a model that saw it.
+
+**Five adjustments, and they disagree.**
+
+![forest plot](results/figures/03-forest.png)
+
+**Variance reduction is not CI-width reduction.** CI width goes as the square
+root of variance, so 10.70% of variance removed is 5.50% off the interval.
+Quoting the first as an interval improvement nearly doubles the claim.
+
+The observed 10.70% also sits below the pooled ρ² of 11.81%, and that is not a
+shortfall. What gets reduced is `var_t/n_t + var_c/n_c`, so each arm's
+reduction counts by its share of that sum: 11.98% and 10.34%, control carrying
+78.06%, giving 10.70% exactly.
+
+**Intent-to-treat.** Only 3.6% of the treatment arm was ever shown an ad, and
+control exposure is exactly zero. Conditioning on exposure would condition on a
+post-randomisation variable. Because the noncompliance is one-sided the Wald
+estimator is valid and gives +2.73 pp among users actually reached.
+
+**Absolute and relative uplift rank users differently.** The top decile has 150x
+the absolute uplift of the bottom, but its *relative* uplift is 43% against 59%
+overall — it converts at 1.81% untreated where everything else is under 0.06%.
+Targeting on absolute uplift is right when the budget buys impressions, but the
+ad is not more persuasive on those users. They were already likely to convert.
+
+---
+
+## What I got wrong
+
+The first version of this project shipped several things that an external
+review caught. They are worth listing because the corrections are the most
+useful part of the repo.
+
+- **Relative confidence intervals were 1.49x too narrow.** I divided the
+  absolute interval by the control mean and wrote a docstring arguing the
+  baseline's own error was second-order. It is not, and the reason is a fact
+  the power section already states: control is the small arm.
+- **The CUPED lift used the wrong denominator.** An adjusted numerator over an
+  unadjusted control mean, giving +50.76% where the consistent figure is
+  +47.27%. Under CUPED's own premise that denominator is the one you cannot
+  use, and it was the choice that made the number larger.
+- **"Held-out" was false.** The docstring claimed a held-out fit sample while
+  the code applied one model to every row including the ones it was fitted on.
+  Now genuinely cross-fitted.
+- **The duplicate explanation was wrong.** I claimed a q² sampling artifact,
+  which predicts duplicates carrying the 0.31% base conversion rate. They carry
+  zero.
+- **The lead-estimate rule could never not fire.** It routed on a Hotelling
+  p-value at N = 14M.
+- **A forest plot nearly shipped a fabricated interval** — point estimate ±8%,
+  because the ANCOVA stage was not returning one.
+
+`MISTAKES.md` has the longer list.
 
 ---
 
 ## Setup
 
 Needs Python 3.12 and **JDK 17**. PySpark 3.5 does not run on JDK 21+ — module
-encapsulation blocks its reflective access to `DirectBuffer` and it dies before
-any of your code executes. `src/ingest.py` resolves JDK 17 through
+encapsulation blocks its reflective access to `DirectBuffer` and it fails
+before any of your code runs. `src/ingest.py` resolves JDK 17 through
 `/usr/libexec/java_home` rather than trusting `JAVA_HOME`.
 
 ```bash
@@ -252,8 +295,8 @@ bash scripts/get_data.sh
 .venv/bin/python -m src.run
 ```
 
-Dataset: Criteo Uplift Prediction v2.1, CC BY-NC-SA 4.0, from
-Diemert, Betlei, Renaudin & Amini, *A Large Scale Benchmark for Uplift
-Modeling* (AdKDD 2018). The URL in the paper is dead; the file is mirrored at
-`huggingface.co/datasets/criteo/criteo-uplift` and the fetch script verifies
-its SHA256.
+Dataset: Criteo Uplift Prediction v2.1, CC BY-NC-SA 4.0, from Diemert, Betlei,
+Renaudin & Amini, *A Large Scale Benchmark for Uplift Modeling* (AdKDD 2018).
+The URL in the paper is dead; the file is mirrored at
+`huggingface.co/datasets/criteo/criteo-uplift` and `scripts/get_data.sh`
+verifies its SHA256.
