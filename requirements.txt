@@ -9,3 +9,4 @@ pyarrow==16.1.0
 # so without setuptools' shim every toPandas() call raises ModuleNotFoundError.
 setuptools==69.5.1
 
+pytest==8.2.2

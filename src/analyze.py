@@ -177,6 +177,8 @@ class CupedResult:
     covariate_imbalance_p: float
     point_estimate_shift: float
     point_estimate_shift_pct: float
+    expected_shift_from_chance_pct: float
+    shift_vs_chance_multiple: float
     covariate_is_safe: bool
     warning: str
     test: TestResult
@@ -245,6 +247,20 @@ def cuped(mt: ArmMoments, mc: ArmMoments, unadjusted: TestResult,
     shift = test.absolute_effect - unadjusted.absolute_effect
     shift_pct = shift / unadjusted.absolute_effect if unadjusted.absolute_effect else 0.0
 
+    # How big a shift would chance alone produce?
+    #
+    # "CUPED must not move the point estimate" is not a well-defined rule as
+    # stated, because even under perfect randomisation the arms differ on the
+    # covariate by sampling noise, and CUPED corrects that difference. The
+    # expected size of that correction is theta * se(imbalance). Whether an
+    # observed shift is alarming depends entirely on its size relative to that
+    # benchmark, not relative to the effect: a small effect can be moved a long
+    # way in percentage terms by an imbalance that is perfectly ordinary.
+    expected_shift = abs(theta) * se_imbalance
+    expected_shift_pct = (expected_shift / abs(unadjusted.absolute_effect)
+                          if unadjusted.absolute_effect else 0.0)
+    shift_vs_chance = abs(shift) / expected_shift if expected_shift > 0 else 0.0
+
     if not covariate_is_pre_assignment:
         warning = (
             f"INVALID. '{covariate_name}' is measured during the experiment, so "
@@ -259,20 +275,22 @@ def cuped(mt: ArmMoments, mc: ArmMoments, unadjusted: TestResult,
         warning = (
             f"Covariate is pre-assignment but NOT balanced across arms: the "
             f"arms differ by {imbalance:+.6f} (p={p_imbalance:.2e}), and the "
-            f"adjustment moved the point estimate by {shift_pct:+.1%}. Under "
-            f"clean randomisation this shift should be near zero, so the "
-            f"randomisation itself is the thing in question, not the "
-            f"adjustment. Because the covariate is fixed before assignment, "
-            f"the adjusted estimate is the better of the two - it corrects for "
-            f"the imbalance rather than inheriting it. See the balance stage "
-            f"for the per-feature picture."
+            f"adjustment moved the point estimate by {shift_pct:+.1%}. Chance "
+            f"imbalance alone would have moved it about "
+            f"{expected_shift_pct:.1%}, so this is {shift_vs_chance:.0f}x what "
+            f"randomisation explains - the assignment is the thing in "
+            f"question, not the adjustment. Because the covariate is fixed "
+            f"before assignment, the adjusted estimate is the better of the "
+            f"two: it corrects for the imbalance rather than inheriting it. "
+            f"See the balance stage for the per-feature picture."
         )
     else:
         warning = (
             f"Valid. Covariate is pre-assignment and balanced across arms "
-            f"({imbalance:+.6f}, p={p_imbalance:.3f}), and the point estimate "
-            f"moved by {shift_pct:+.2%} - within the tolerance you want, since "
-            f"CUPED should tighten the interval without relocating the effect."
+            f"({imbalance:+.6f}, p={p_imbalance:.3f}). The point estimate moved "
+            f"{shift_pct:+.2%} against the {expected_shift_pct:.2%} chance "
+            f"imbalance alone would produce, so the adjustment is doing what it "
+            f"should: tightening the interval without relocating the effect."
         )
 
     return CupedResult(
@@ -288,6 +306,8 @@ def cuped(mt: ArmMoments, mc: ArmMoments, unadjusted: TestResult,
         covariate_imbalance_p=p_imbalance,
         point_estimate_shift=float(shift),
         point_estimate_shift_pct=float(shift_pct),
+        expected_shift_from_chance_pct=float(expected_shift_pct),
+        shift_vs_chance_multiple=float(shift_vs_chance),
         covariate_is_safe=bool(covariate_is_pre_assignment),
         warning=warning,
         test=test,
@@ -434,7 +454,9 @@ def report(res: dict) -> None:
     print(f"  CI width reduction       {s['observed_ci_width_reduction']:.2%}   "
           f"(= 1 - sqrt(1 - variance reduction); these are different numbers)")
     print(f"  point estimate moved     {s['point_estimate_shift_pct']:+.3%}   "
-          f"(must be ~0; CUPED tightens, it does not relocate)")
+          f"(chance alone would move it {s['expected_shift_from_chance_pct']:.3%})")
+    print(f"  shift vs chance          {s['shift_vs_chance_multiple']:.1f}x   "
+          f"(~1x is a healthy experiment; higher means real imbalance)")
     if "lin_robustness" in res:
         li = res["lin_robustness"]
         print(f"  Lin robustness check     theta per arm "
