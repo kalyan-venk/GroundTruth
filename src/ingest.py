@@ -180,6 +180,12 @@ def _aggregate(df):
     Y (conversion) and the naive covariate (visit) are binary, so sum == sum of
     squares for them, but we compute both anyway rather than hard-coding an
     assumption that a future metric change would quietly break.
+
+    We also emit the full 12x12 feature cross-product matrix per arm. Those 78
+    extra sums cost one more expression in the same pass and they are what
+    makes an exact Hotelling T2 balance test possible on the driver -- testing
+    whether the two arms contain the same kind of user, not merely the same
+    number of them.
     """
     from pyspark.sql import functions as F
 
@@ -187,22 +193,25 @@ def _aggregate(df):
     Xn = F.col("visit").cast("double")
     Xs = F.col("f_index")
 
-    return (
-        df.groupBy("treatment")
-        .agg(
-            F.count(F.lit(1)).alias("n"),
-            F.sum(Y).alias("sum_y"),
-            F.sum(Y * Y).alias("sum_yy"),
-            F.sum(Xn).alias("sum_xn"),
-            F.sum(Xn * Xn).alias("sum_xnxn"),
-            F.sum(Y * Xn).alias("sum_yxn"),
-            F.sum(Xs).alias("sum_xs"),
-            F.sum(Xs * Xs).alias("sum_xsxs"),
-            F.sum(Y * Xs).alias("sum_yxs"),
-            F.sum(F.col("exposure").cast("double")).alias("sum_exposure"),
-        )
-        .orderBy("treatment")
-    )
+    aggs = [
+        F.count(F.lit(1)).alias("n"),
+        F.sum(Y).alias("sum_y"),
+        F.sum(Y * Y).alias("sum_yy"),
+        F.sum(Xn).alias("sum_xn"),
+        F.sum(Xn * Xn).alias("sum_xnxn"),
+        F.sum(Y * Xn).alias("sum_yxn"),
+        F.sum(Xs).alias("sum_xs"),
+        F.sum(Xs * Xs).alias("sum_xsxs"),
+        F.sum(Y * Xs).alias("sum_yxs"),
+        F.sum(F.col("exposure").cast("double")).alias("sum_exposure"),
+    ]
+    for f in config.FEATURES:
+        aggs.append(F.sum(F.col(f)).alias(f"sum_{f}"))
+    for i, fi in enumerate(config.FEATURES):
+        for fj in config.FEATURES[i:]:
+            aggs.append(F.sum(F.col(fi) * F.col(fj)).alias(f"sum_{fi}_{fj}"))
+
+    return df.groupBy("treatment").agg(*aggs).orderBy("treatment")
 
 
 def _data_quality(df, spark):
@@ -230,7 +239,27 @@ def _data_quality(df, spark):
     distinct = df.distinct().count()
     checks["distinct_rows"] = int(distinct)
     checks["exact_duplicate_rows"] = int(checks["rows"] - distinct)
-    return {k: int(v) for k, v in checks.items()}
+
+    # Duplicates split by arm. If they concentrate in one arm they are a
+    # plausible source of between-arm composition differences, which is worth
+    # knowing before blaming the randomiser.
+    per_arm = (
+        df.groupBy("treatment")
+          .agg(F.count(F.lit(1)).alias("rows"),
+               F.countDistinct(*config.RAW_COLUMNS).alias("distinct"))
+          .collect()
+    )
+    for row in per_arm:
+        arm = "treatment" if row["treatment"] == 1 else "control"
+        checks[f"duplicate_rows_{arm}"] = int(row["rows"] - row["distinct"])
+        checks[f"duplicate_share_{arm}"] = row["rows"] and (
+            (row["rows"] - row["distinct"]) / row["rows"]
+        )
+
+    return {
+        k: (float(v) if k.startswith("duplicate_share") else int(v))
+        for k, v in checks.items()
+    }
 
 
 def run(verbose: bool = True) -> dict:
@@ -249,6 +278,9 @@ def run(verbose: bool = True) -> dict:
         print(f"  rows                     {quality['rows']:,}")
         print(f"  distinct rows            {quality['distinct_rows']:,} "
               f"({quality['exact_duplicate_rows']:,} exact duplicates)")
+        print(f"  duplicate share by arm   treatment "
+              f"{quality['duplicate_share_treatment']:.2%}, control "
+              f"{quality['duplicate_share_control']:.2%}")
         print(f"  exposed                  {quality['exposed']:,}")
         print(f"  converted without visit  {quality['converted_without_visit']:,}")
 

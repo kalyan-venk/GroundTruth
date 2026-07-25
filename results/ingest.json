@@ -27,7 +27,11 @@
     "exposed": 428212,
     "converted_without_visit": 0,
     "distinct_rows": 12720047,
-    "exact_duplicate_rows": 1259545
+    "exact_duplicate_rows": 1259545,
+    "duplicate_rows_treatment": 1210496,
+    "duplicate_share_treatment": 0.10187083610523069,
+    "duplicate_rows_control": 49049,
+    "duplicate_share_control": 0.023390783795602825
   },
   "covariate_model": {
     "intercept": -0.21881847013558314,
@@ -70,5 +74,5 @@
   "observed_ratio_label": "85/15",
   "total_rows": 13979592,
   "cells_parquet": "/Users/kalyanvenkatesh/Me/GroundTruth/data/aggregate/cells.parquet",
-  "elapsed_seconds": 21.5
+  "elapsed_seconds": 29.4
 }
