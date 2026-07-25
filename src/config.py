@@ -51,6 +51,23 @@ METRIC = "conversion"
 COVARIATE_SAFE = "f_index"   # pre-assignment feature composite, built in ingest
 COVARIATE_NAIVE = "visit"    # the tempting-but-wrong choice, kept for contrast
 
+# Folds for cross-fitting the covariate model. Every row's covariate comes from
+# a model fitted without it, so the covariate cannot be overfit to the rows it
+# later adjusts.
+COVARIATE_FOLDS = 2
+
+# --- Decision rule ---------------------------------------------------------
+
+# The minimum lift that would make this campaign worth shipping, as a relative
+# effect on the baseline. A p-value answers "is the effect distinguishable from
+# zero"; it does not answer "is the effect worth having". Those are different
+# questions and only the second one is a decision.
+#
+# Criteo publishes no cost data, so this is a stated assumption rather than a
+# measured break-even, and the pipeline says so wherever it uses it. The point
+# is that the number exists and is visible, not that it is authoritative.
+MIN_PRACTICAL_LIFT = 0.10
+
 SPARK_APP_NAME = "GroundTruth-ExperimentEngine"
 SPARK_MASTER = os.environ.get("GT_SPARK_MASTER", "local[*]")
 SPARK_DRIVER_MEMORY = os.environ.get("GT_SPARK_DRIVER_MEMORY", "4g")

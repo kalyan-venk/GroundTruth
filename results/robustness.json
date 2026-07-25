@@ -1,0 +1,103 @@
+{
+  "specifications": [
+    {
+      "spec": "all",
+      "label": "every row is a user",
+      "n_treatment": 11882655,
+      "n_control": 2096937,
+      "n_total": 13979592,
+      "treatment_share": 0.8500001287591226,
+      "srm_p": 0.9989242531217909,
+      "srm_passed": true,
+      "srm_z": 0.0013482491793979363,
+      "max_abs_smd": 0.048836340221728926,
+      "balance_passed": true,
+      "conversion_rate_treatment": 0.0030894610674129645,
+      "conversion_rate_control": 0.0019375880152813366,
+      "lift_unadjusted": 0.5944881177252619,
+      "lift_unadjusted_ci": [
+        0.5436975672882334,
+        0.6469497727026883
+      ],
+      "lift_cuped": 0.4736454982691847,
+      "lift_cuped_ci": [
+        0.4318497710310485,
+        0.5166612437317932
+      ],
+      "p_value": 3.194807477026664e-246
+    },
+    {
+      "spec": "dedup",
+      "label": "one row per distinct record",
+      "n_treatment": 10672159,
+      "n_control": 2047888,
+      "n_total": 12720047,
+      "treatment_share": 0.839003110601714,
+      "srm_p": 0.0,
+      "srm_passed": false,
+      "srm_z": -109.83964554721815,
+      "max_abs_smd": 0.08491155316606247,
+      "balance_passed": true,
+      "conversion_rate_treatment": 0.0034398850316978975,
+      "conversion_rate_control": 0.0019839952184885113,
+      "lift_unadjusted": 0.7338171985709434,
+      "lift_unadjusted_ci": [
+        0.6785905715274012,
+        0.7908608144540161
+      ],
+      "lift_cuped": 0.44244121607846454,
+      "lift_cuped_ci": [
+        0.4046478108129994,
+        0.48125148939481344
+      ],
+      "p_value": 0.0
+    },
+    {
+      "spec": "singleton",
+      "label": "drop all duplicated records",
+      "n_treatment": 9756726,
+      "n_control": 2001716,
+      "n_total": 11758442,
+      "treatment_share": 0.8297635009808272,
+      "srm_p": 0.0,
+      "srm_passed": false,
+      "srm_z": -194.3368587578336,
+      "max_abs_smd": 0.1221318397171432,
+      "balance_passed": false,
+      "conversion_rate_treatment": 0.0037626351298581102,
+      "conversion_rate_control": 0.002029758467235112,
+      "lift_unadjusted": 0.8537354028055766,
+      "lift_unadjusted_ci": [
+        0.7946912016507248,
+        0.9147221206935623
+      ],
+      "lift_cuped": 0.4210800837421358,
+      "lift_cuped_ci": [
+        0.38598573422323534,
+        0.4570630523411201
+      ],
+      "p_value": 0.0
+    }
+  ],
+  "lift_range": [
+    0.4210800837421358,
+    0.8537354028055766
+  ],
+  "lift_range_unadjusted": [
+    0.5944881177252619,
+    0.8537354028055766
+  ],
+  "lift_range_cuped": [
+    0.4210800837421358,
+    0.4736454982691847
+  ],
+  "lowest_ci_bound": 0.38598573422323534,
+  "spread_factor": 2.0274893916103465,
+  "spread_factor_unadjusted": 1.4360848894209923,
+  "spread_factor_cuped": 1.1248347204168394,
+  "adjustment_stability_gain": 3.493298082174959,
+  "srm_stable": false,
+  "sign_stable": true,
+  "note": "The specification is a choice about the duplicate rows, not about the statistics. The ship decision survives all three; the magnitude does not.",
+  "adjustment_note": "The two lift columns move in opposite directions as the specification tightens, and the adjusted one barely moves at all. That is the strongest argument in this project for adjusting: changing the duplicate rule changes the composition of the arms, and covariate adjustment is what absorbs composition differences. The case for CUPED here is specification robustness, not the 10.7% variance reduction."
+}

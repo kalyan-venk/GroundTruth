@@ -116,7 +116,26 @@ def _read_raw(spark):
 
 # --- The pre-assignment covariate ------------------------------------------
 
-def _fit_covariate_model(df, seed: int = 7):
+def _fit_one_fold(pdf):
+    """OLS of conversion on f0..f11. Returns coefficients and in-sample R^2."""
+    X = pdf[config.FEATURES].to_numpy(dtype=np.float64)
+    y = pdf["conversion"].to_numpy(dtype=np.float64)
+    X1 = np.column_stack([np.ones(len(X)), X])
+
+    beta, *_ = np.linalg.lstsq(X1, y, rcond=None)
+    resid = y - X1 @ beta
+    ss_res = float(resid @ resid)
+    ss_tot = float(((y - y.mean()) ** 2).sum())
+
+    return {
+        "intercept": float(beta[0]),
+        "coefficients": {f: float(b) for f, b in zip(config.FEATURES, beta[1:])},
+        "fit_rows": int(len(pdf)),
+        "fit_r2": 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0,
+    }
+
+
+def _fit_covariate_model(df, n_folds: int = 2, seed: int = 7):
     """Build a pre-randomisation covariate for CUPED out of f0..f11.
 
     CUPED needs a covariate that is (a) correlated with the outcome and (b)
@@ -132,43 +151,78 @@ def _fit_covariate_model(df, seed: int = 7):
     but calibration is irrelevant here -- we only need something correlated
     with Y, and theta rescales it anyway.
 
-    Fitted on a *held-out sample of control rows only*, for two reasons:
-    control-only keeps the treatment effect out of the coefficients, and
-    holding out removes any worry that the covariate is overfit to the rows it
-    later adjusts.
-    """
-    fit_sample = (
-        df.filter("treatment = 0")
-          .select(*config.FEATURES, "conversion")
-          .sample(withReplacement=False, fraction=0.25, seed=seed)
-          .toPandas()
-    )
-    X = fit_sample[config.FEATURES].to_numpy(dtype=np.float64)
-    y = fit_sample["conversion"].to_numpy(dtype=np.float64)
-    X1 = np.column_stack([np.ones(len(X)), X])
+    Two things make it legitimate rather than merely convenient.
 
-    beta, *_ = np.linalg.lstsq(X1, y, rcond=None)
-    resid = y - X1 @ beta
-    ss_res = float(resid @ resid)
-    ss_tot = float(((y - y.mean()) ** 2).sum())
-    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+    *Control rows only.* Fitting on treatment rows would let the treatment
+    effect into the coefficients, and the covariate would then partly encode
+    the thing we are trying to measure.
+
+    *Cross-fitting.* Every row's covariate comes from a model that never saw
+    that row. Rows are hashed into folds; the model applied to fold k is fitted
+    on control rows outside fold k. Without this, the covariate is fitted on
+    rows it later adjusts, and any overfitting inflates the apparent
+    correlation and therefore the apparent variance reduction.
+
+    An earlier version claimed a "held-out sample" in this docstring while the
+    caller applied a single model to every row including the ones it was fitted
+    on. Nothing was held out. The effect was negligible here -- 13 parameters
+    on 500k rows does not overfit, and the in-sample and full-sample R^2 agree
+    to three digits -- but a claim in a docstring is a claim, and this one was
+    false about the code directly beneath it.
+    """
+    from pyspark.sql import functions as F
+
+    folds = []
+    for k in range(n_folds):
+        train = (
+            df.filter(F.col("treatment") == 0)
+              .filter(F.col("_fold") != k)
+              .select(*config.FEATURES, "conversion")
+              .sample(withReplacement=False, fraction=0.5, seed=seed + k)
+              .toPandas()
+        )
+        fit = _fit_one_fold(train)
+        fit["applied_to_fold"] = k
+        folds.append(fit)
 
     return {
-        "intercept": float(beta[0]),
-        "coefficients": {f: float(b) for f, b in zip(config.FEATURES, beta[1:])},
-        "fit_rows": int(len(fit_sample)),
-        "fit_r2": r2,
+        "n_folds": n_folds,
         "fit_seed": seed,
-        "fit_population": "control arm only, 25% sample",
+        "fit_population": "control arm only, cross-fitted",
+        "fit_rows": sum(f["fit_rows"] for f in folds),
+        "fit_r2": float(np.mean([f["fit_r2"] for f in folds])),
+        "folds": folds,
     }
 
 
-def _covariate_expr(model):
+def _fold_expr(n_folds: int):
+    """Deterministic row -> fold assignment.
+
+    Hashing the row's own contents rather than using a random number keeps the
+    assignment reproducible across runs and across machines, and it puts
+    identical rows in the same fold, which is what you want when 16% of the
+    file consists of exact duplicates.
+    """
     from pyspark.sql import functions as F
 
-    expr = F.lit(model["intercept"])
-    for feat, coef in model["coefficients"].items():
-        expr = expr + F.lit(coef) * F.col(feat)
+    return F.pmod(F.hash(*[F.col(c) for c in config.RAW_COLUMNS]), F.lit(n_folds))
+
+
+def _covariate_expr(model):
+    """Piecewise: each fold gets the model that was not trained on it."""
+    from pyspark.sql import functions as F
+
+    def linear(fold_model):
+        expr = F.lit(fold_model["intercept"])
+        for feat, coef in fold_model["coefficients"].items():
+            expr = expr + F.lit(coef) * F.col(feat)
+        return expr
+
+    folds = model["folds"]
+    expr = linear(folds[-1])
+    for fold_model in folds[:-1]:
+        expr = F.when(F.col("_fold") == fold_model["applied_to_fold"],
+                      linear(fold_model)).otherwise(expr)
     return expr
 
 
@@ -207,6 +261,10 @@ def _aggregate(df):
     ]
     for f in config.FEATURES:
         aggs.append(F.sum(F.col(f)).alias(f"sum_{f}"))
+        # sum(f_i * Y) per arm. Twelve extra sums, and they are what a full
+        # 12-covariate ANCOVA needs -- without them the pipeline can only
+        # adjust on the collapsed index.
+        aggs.append(F.sum(F.col(f) * Y).alias(f"sum_{f}_y"))
     for i, fi in enumerate(config.FEATURES):
         for fj in config.FEATURES[i:]:
             aggs.append(F.sum(F.col(fi) * F.col(fj)).alias(f"sum_{fi}_{fj}"))
@@ -288,10 +346,14 @@ def run(verbose: bool = True) -> dict:
     if bad:
         raise ValueError(f"Non-binary values in supposedly binary columns: {bad}")
 
-    model = _fit_covariate_model(df)
+    from pyspark.sql import functions as F
+
+    df = df.withColumn("_fold", _fold_expr(config.COVARIATE_FOLDS)).cache()
+    model = _fit_covariate_model(df, n_folds=config.COVARIATE_FOLDS)
     if verbose:
         print(f"  covariate model          OLS on {len(config.FEATURES)} features, "
-              f"{model['fit_rows']:,} control rows, R2={model['fit_r2']:.4f}")
+              f"{model['n_folds']}-fold cross-fitted on {model['fit_rows']:,} "
+              f"control rows, mean R2={model['fit_r2']:.4f}")
 
     df = df.withColumn("f_index", _covariate_expr(model))
     cells = _aggregate(df).toPandas()

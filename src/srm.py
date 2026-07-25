@@ -37,7 +37,11 @@ class SRMResult:
     threshold: float
     binomial_sd_users: float
     z_score: float
+    closeness_p: float
     underdispersed: bool
+    arm_ratio: float
+    nearest_simple_ratio: str
+    ratio_looks_constructed: bool
     dispersion_note: str
 
     def as_dict(self) -> dict:
@@ -49,6 +53,7 @@ def check(
     n_control: int,
     expected_treatment_share: float = config.DESIGN_TREATMENT_SHARE,
     threshold: float = 0.001,
+    underdispersion_threshold: float = 0.01,
 ) -> SRMResult:
     """Chi-square goodness-of-fit on the arm counts.
 
@@ -103,17 +108,47 @@ def check(
     # real assignment mechanism was sound.
     binomial_sd = (n_total * expected_treatment_share * (1.0 - expected_treatment_share)) ** 0.5
     z = (n_treatment - expected_t) / binomial_sd if binomial_sd > 0 else 0.0
-    underdispersed = abs(z) < 0.01
+
+    # P(|Z| < |z_observed|) under the null. This is the actual probability that
+    # random assignment lands at least this close to the design, so it is a
+    # p-value for the upper tail and can be gated at a stated level like any
+    # other. An earlier version hard-coded a threshold of |z| < 0.01 with no
+    # basis, and then printed P(|Z| < 0.01) = 0.80% as though it described the
+    # observed z - quoting the probability of the threshold rather than of the
+    # data, which is 7.4x too large here.
+    closeness_p = float(2.0 * stats.norm.cdf(abs(z)) - 1.0)
+    underdispersed = closeness_p < underdispersion_threshold
+
+    # A second, sharper piece of evidence the z-score cannot give you.
+    #
+    # If an arm was downsampled to hit a round target, the arm ratio will sit
+    # on a simple fraction far more precisely than sampling noise permits. So
+    # search small integer ratios and report the closest. On this data
+    # n_t/n_c = 5.66667239 against 17/3 = 5.66666667 - agreement to seven
+    # significant figures, which no randomiser produces by accident.
+    ratio = n_treatment / n_control if n_control else float("inf")
+    best = min(
+        ((abs(ratio - a / b), a, b) for b in range(1, 21) for a in range(1, 101)),
+        key=lambda t: t[0],
+    )
+    ratio_gap, ratio_a, ratio_b = best
+    ratio_is_exact = ratio > 0 and ratio_gap / ratio < 1e-5
+
     if underdispersed:
         dispersion_note = (
             f"Under-dispersed. The arms sit {abs(z):.4f} sd from the designed "
-            f"split (1 sd = {binomial_sd:,.0f} users). Independent Bernoulli "
-            f"assignment lands this close about {2 * 0.01 * 0.3989:.2%} of the "
-            f"time. The ratio looks constructed - most likely the control arm "
-            f"was downsampled to exactly {1 - expected_treatment_share:.0%} - "
-            f"so this PASS demonstrates the guardrail runs correctly rather "
-            f"than validating the upstream randomiser."
+            f"split (1 sd = {binomial_sd:,.0f} users). Independent assignment "
+            f"lands at least this close {closeness_p:.3%} of the time. "
+            f"The split looks constructed rather than randomised, so this PASS "
+            f"shows the guardrail runs - it does not validate the upstream "
+            f"randomiser."
         )
+        if ratio_is_exact:
+            dispersion_note += (
+                f" Corroborated by the arm ratio itself: {ratio:.8f} against "
+                f"{ratio_a}/{ratio_b} = {ratio_a / ratio_b:.8f}, agreeing to "
+                f"roughly seven significant figures."
+            )
     else:
         dispersion_note = (
             f"Dispersion normal. The arms sit {abs(z):.3f} sd from the designed "
@@ -154,7 +189,11 @@ def check(
         threshold=float(threshold),
         binomial_sd_users=float(binomial_sd),
         z_score=float(z),
+        closeness_p=closeness_p,
         underdispersed=bool(underdispersed),
+        arm_ratio=float(ratio),
+        nearest_simple_ratio=f"{ratio_a}/{ratio_b}",
+        ratio_looks_constructed=bool(ratio_is_exact),
         dispersion_note=dispersion_note,
     )
 
@@ -195,6 +234,12 @@ def report(result: SRMResult, sens: list[dict] | None = None) -> None:
     print(f"  verdict                  {'PASS' if result.passed else 'FAIL'}")
     print(f"  1 sd of binomial noise   {result.binomial_sd_users:,.0f} users")
     print(f"  observed deviation       {result.z_score:+.4f} sd")
+    print(f"  P(landing this close)    {result.closeness_p:.4%}")
+    if result.ratio_looks_constructed:
+        a, b = (int(v) for v in result.nearest_simple_ratio.split("/"))
+        print(f"  arm ratio                {result.arm_ratio:.8f}  vs  "
+              f"{result.nearest_simple_ratio} = {a / b:.8f}   <-- constructed, "
+              f"not randomised")
     if result.underdispersed:
         print("  ! under-dispersed        the split is closer to design than "
               "chance allows;")
