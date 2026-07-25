@@ -162,5 +162,5 @@
   "observed_ratio_label": "85/15",
   "total_rows": 13979592,
   "cells_parquet": "/Users/kalyanvenkatesh/Me/GroundTruth/data/aggregate/cells.parquet",
-  "elapsed_seconds": 36.9
+  "elapsed_seconds": 37.6
 }

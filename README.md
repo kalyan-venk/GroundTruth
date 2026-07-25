@@ -2,7 +2,7 @@
 
 Experimentation analysis on the Criteo Uplift log: 13,979,592 rows through
 Spark, six validity checks, and a ship/no-ship recommendation with the
-caveats attached. Runs end to end in about three minutes on a laptop.
+caveats attached. Full run takes about 80 seconds on a laptop.
 
 ```bash
 bash scripts/get_data.sh          # 311 MB download
@@ -171,7 +171,7 @@ test it would not be.
 
 ---
 
-## How it runs in three minutes
+## How it runs in 80 seconds
 
 Every test here touches the raw 13.9M rows only through sums. The z-test needs
 `n` and `sum(Y)` per arm. CUPED needs `θ = Cov(Y,X)/Var(X)`, which comes from
