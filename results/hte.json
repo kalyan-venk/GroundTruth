@@ -1,0 +1,180 @@
+{
+  "n_bins": 10,
+  "deciles": [
+    {
+      "bin": 0,
+      "n_treatment": 1182074,
+      "n_control": 214586,
+      "rate_treatment": 0.00024786942272649596,
+      "rate_control": 0.0001957257230201411,
+      "uplift": 5.214369970635486e-05,
+      "se": 3.3489824065244e-05,
+      "uplift_relative": 0.2664120939330444,
+      "mean_score": -0.0009300843447951582,
+      "incremental_conversions": 72.82701963187758
+    },
+    {
+      "bin": 1,
+      "n_treatment": 1180749,
+      "n_control": 214096,
+      "rate_treatment": 0.00027948361590820743,
+      "rate_control": 0.00022419849039683132,
+      "uplift": 5.528512551137611e-05,
+      "se": 3.5827169537872315e-05,
+      "uplift_relative": 0.2465900881559079,
+      "mean_score": -0.000663823587262359,
+      "incremental_conversions": 77.1141808939154
+    },
+    {
+      "bin": 2,
+      "n_treatment": 1186401,
+      "n_control": 213385,
+      "rate_treatment": 0.00014919070364910347,
+      "rate_control": 8.904093539845818e-05,
+      "uplift": 6.014976825064529e-05,
+      "se": 2.3301782444363935e-05,
+      "uplift_relative": 0.675529384113892,
+      "mean_score": -0.00047334360013267856,
+      "incremental_conversions": 84.19680350049777
+    },
+    {
+      "bin": 3,
+      "n_treatment": 1185090,
+      "n_control": 211711,
+      "rate_treatment": 0.00010716485667755191,
+      "rate_control": 5.19576214745573e-05,
+      "uplift": 5.5207235202994615e-05,
+      "se": 1.832546980840779e-05,
+      "uplift_relative": 1.062543542914654,
+      "mean_score": -0.0003824835085125236,
+      "incremental_conversions": 77.11352133877809
+    },
+    {
+      "bin": 4,
+      "n_treatment": 1187658,
+      "n_control": 211288,
+      "rate_treatment": 0.00014313884973620353,
+      "rate_control": 4.732876452993071e-05,
+      "uplift": 9.581008520627283e-05,
+      "se": 1.8560584179502727e-05,
+      "uplift_relative": 2.0243521283062975,
+      "mean_score": -0.00027391542959554095,
+      "incremental_conversions": 134.03313545897456
+    },
+    {
+      "bin": 5,
+      "n_treatment": 1186267,
+      "n_control": 211334,
+      "rate_treatment": 0.00020821619416202253,
+      "rate_control": 0.000146687234425128,
+      "uplift": 6.152895973689454e-05,
+      "se": 2.9487035819101748e-05,
+      "uplift_relative": 0.4194568121624797,
+      "mean_score": -0.00012919036762308177,
+      "incremental_conversions": 85.99293565724355
+    },
+    {
+      "bin": 6,
+      "n_treatment": 1183806,
+      "n_control": 212086,
+      "rate_treatment": 0.00031593014395939873,
+      "rate_control": 0.00019803287345699386,
+      "uplift": 0.00011789727050240487,
+      "se": 3.4646009027765447e-05,
+      "uplift_relative": 0.5953419169469771,
+      "mean_score": 8.835197455225526e-05,
+      "incremental_conversions": 164.57185671614295
+    },
+    {
+      "bin": 7,
+      "n_treatment": 1186587,
+      "n_control": 211282,
+      "rate_treatment": 0.0008848908676734196,
+      "rate_control": 0.0005963593680483903,
+      "uplift": 0.00028853149962502925,
+      "se": 5.971580032913299e-05,
+      "uplift_relative": 0.4838215262204399,
+      "mean_score": 0.0006334986658401722,
+      "incremental_conversions": 403.32923884934
+    },
+    {
+      "bin": 8,
+      "n_treatment": 1191390,
+      "n_control": 207548,
+      "rate_treatment": 0.002101746699233668,
+      "rate_control": 0.0014599032512960857,
+      "uplift": 0.0006418434479375824,
+      "se": 9.372399642888096e-05,
+      "uplift_relative": 0.43964793377079,
+      "mean_score": 0.002095857727790546,
+      "incremental_conversions": 897.8991893709057
+    },
+    {
+      "bin": 9,
+      "n_treatment": 1212633,
+      "n_control": 189621,
+      "rate_treatment": 0.02592622829825677,
+      "rate_control": 0.01809398748028963,
+      "uplift": 0.00783224081796714,
+      "se": 0.0003384096603053551,
+      "uplift_relative": 0.43286427751202183,
+      "mean_score": 0.010008443151196113,
+      "incremental_conversions": 10982.791015957693
+    }
+  ],
+  "qini_coefficient": 0.8143314033819907,
+  "qini_curve": [
+    {
+      "population_share": 0.0,
+      "incremental_conversions": 0.0
+    },
+    {
+      "population_share": 0.10030721926648503,
+      "incremental_conversions": 10982.791015957693
+    },
+    {
+      "population_share": 0.2003772356160323,
+      "incremental_conversions": 11880.6902053286
+    },
+    {
+      "population_share": 0.3003707833533339,
+      "incremental_conversions": 12284.019444177939
+    },
+    {
+      "population_share": 0.40022291065433097,
+      "incremental_conversions": 12448.59130089408
+    },
+    {
+      "population_share": 0.5001972875889368,
+      "incremental_conversions": 12534.584236551324
+    },
+    {
+      "population_share": 0.6002678762012511,
+      "incremental_conversions": 12668.617372010298
+    },
+    {
+      "population_share": 0.700185026859153,
+      "incremental_conversions": 12745.730893349077
+    },
+    {
+      "population_share": 0.8003157030620064,
+      "incremental_conversions": 12829.927696849574
+    },
+    {
+      "population_share": 0.9000929354733672,
+      "incremental_conversions": 12907.04187774349
+    },
+    {
+      "population_share": 1.0,
+      "incremental_conversions": 12979.868897375367
+    }
+  ],
+  "ate_absolute": 0.0011518730521316279,
+  "top_decile_uplift": 0.00783224081796714,
+  "bottom_decile_uplift": 5.214369970635486e-05,
+  "top_vs_bottom_ratio": 150.20493102856312,
+  "share_of_effect_in_top_30pct": 0.9463901015719708,
+  "heterogeneity_p": 0.0,
+  "heterogeneity_detected": true,
+  "verdict": "Heterogeneity detected (chi2=13915.2 on 9 df, p=0.00e+00). Top decile uplift +0.7832 pp against +0.0052 pp in the bottom, and the top 30% of users by predicted uplift carry 94.6% of the incremental conversions while being 30% of the population. Qini coefficient 0.814."
+}

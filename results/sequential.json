@@ -1,0 +1,31 @@
+{
+  "n_peeks": [
+    1,
+    2,
+    5,
+    10,
+    20,
+    30,
+    50
+  ],
+  "alpha_inflation": [
+    0.05025,
+    0.07575,
+    0.135,
+    0.20275,
+    0.24675,
+    0.288,
+    0.3215
+  ],
+  "fixed_horizon_ci": [
+    0.001084505777075477,
+    0.0012192403271877787
+  ],
+  "always_valid_ci": [
+    0.0009491721362712614,
+    0.0013545739679919943
+  ],
+  "width_penalty": 3.008892903734262,
+  "still_significant": true,
+  "verdict": "Peeking 30 times at a null experiment this size rejects 28.8% of the time against a nominal 5%. The always-valid interval is 3.01x wider than the fixed-horizon one (5.90 standard errors instead of 1.96), and the effect remains significant under it. At 14M rows that penalty is cheap; on a two-week experiment with thousands of users it would not be."
+}

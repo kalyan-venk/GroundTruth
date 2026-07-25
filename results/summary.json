@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-07-25T22:19:14+00:00",
+  "generated_utc": "2026-07-25T22:40:34+00:00",
   "dataset": {
     "name": "Criteo Uplift Prediction v2.1",
     "source": "huggingface.co/datasets/criteo/criteo-uplift",
@@ -24,19 +24,37 @@
     ],
     "exact_duplicate_rows": 1259545
   },
+  "decision": {
+    "ship": true,
+    "marginal": false,
+    "min_practical_lift": 0.1,
+    "worst_case_lower_bound": 0.38598573422323534,
+    "leading_estimate": "cuped",
+    "leading_reason": "Adjustment is not just a precision gain here. Across the three duplicate-handling specifications the unadjusted lift spans 1.44x while the adjusted one spans 1.12x - about 3.5x less sensitive. Changing the duplicate rule changes arm composition, and covariate adjustment is what absorbs composition differences.",
+    "point_estimate": 0.4736454982691949,
+    "ci": [
+      0.43184977103105826,
+      0.5166612437318039
+    ],
+    "plausible_range": [
+      0.4210800837421358,
+      0.8537354028055766
+    ],
+    "targeting": "95% of incremental conversions come from the top 30% of users by predicted uplift; the bottom 40% contribute almost nothing."
+  },
   "headline": {
     "SRM_P": 0.9989242531217909,
     "RATIO": "85/15",
     "MDE": 0.05,
     "N": 1949765,
-    "CUPED_PCT": 0.10700786194132605,
-    "CUPED_CI_WIDTH_PCT": 0.055017387430501885,
-    "LIFT": 0.594488117725262,
-    "LIFT_CUPED": 0.5076349090560571,
-    "FINAL_P": 1.963403486184217e-201
+    "CUPED_PCT": 0.10701492844594562,
+    "CUPED_CI_WIDTH_PCT": 0.055021126398027254,
+    "LIFT": 0.5944881177252619,
+    "LIFT_CUPED": 0.4736454982691949,
+    "FINAL_P": 5.5418868387379995e-202,
+    "QINI": 0.8143314033819907,
+    "PEEK_ALPHA_30": 0.288
   },
-  "recommended_estimate": "cuped",
-  "recommendation_reason": "Arms are imbalanced on pre-assignment features (Hotelling p=0.00e+00), so the unadjusted difference inherits that imbalance. The covariate-adjusted estimate corrects for it and is the defensible headline.",
   "ingest": {
     "schema": [
       "f0",
@@ -73,25 +91,53 @@
       "duplicate_share_control": 0.023390783795602825
     },
     "covariate_model": {
-      "intercept": -0.21881847013558314,
-      "coefficients": {
-        "f0": -4.171225484024977e-05,
-        "f1": 0.004113494702708707,
-        "f2": -0.0011135867852059562,
-        "f3": -0.00025374684710038333,
-        "f4": 0.03510278360958437,
-        "f5": -0.0015803037276163944,
-        "f6": -6.1848562645524e-05,
-        "f7": -0.0004217682033539887,
-        "f8": -0.007106725209166416,
-        "f9": 6.032263273669036e-05,
-        "f10": -0.03380859274964421,
-        "f11": -0.2539627273464605
-      },
-      "fit_rows": 523975,
-      "fit_r2": 0.10714326971470545,
+      "n_folds": 2,
       "fit_seed": 7,
-      "fit_population": "control arm only, 25% sample"
+      "fit_population": "control arm only, cross-fitted",
+      "fit_rows": 1048325,
+      "fit_r2": 0.10557021798968275,
+      "folds": [
+        {
+          "intercept": -0.2341099738184945,
+          "coefficients": {
+            "f0": -3.128808203878633e-06,
+            "f1": 0.007330722110364219,
+            "f2": -0.000752194561001914,
+            "f3": -0.00039149969689607927,
+            "f4": 0.029957699919326165,
+            "f5": 0.0002066343752252021,
+            "f6": -6.524614256247026e-05,
+            "f7": 2.3393163272138523e-05,
+            "f8": -0.009724786764415882,
+            "f9": 6.231325385178323e-05,
+            "f10": -0.02899056416110704,
+            "f11": -0.30041203981221043
+          },
+          "fit_rows": 524176,
+          "fit_r2": 0.10378006684210905,
+          "applied_to_fold": 0
+        },
+        {
+          "intercept": -0.20358333905545098,
+          "coefficients": {
+            "f0": -5.169763911618691e-05,
+            "f1": 0.0036658526972882435,
+            "f2": -0.001433132607834495,
+            "f3": -6.827199320146687e-05,
+            "f4": 0.03457273720796671,
+            "f5": -0.0007382476236525865,
+            "f6": -9.222223130075897e-05,
+            "f7": -0.0001687252626977734,
+            "f8": -0.008590074738222502,
+            "f9": 4.6038168003483564e-05,
+            "f10": -0.034528880709408356,
+            "f11": -0.26515562496675105
+          },
+          "fit_rows": 524149,
+          "fit_r2": 0.10736036913725644,
+          "applied_to_fold": 1
+        }
+      ]
     },
     "arms": {
       "treatment": {
@@ -113,7 +159,7 @@
     "observed_ratio_label": "85/15",
     "total_rows": 13979592,
     "cells_parquet": "/Users/kalyanvenkatesh/Me/GroundTruth/data/aggregate/cells.parquet",
-    "elapsed_seconds": 29.5
+    "elapsed_seconds": 33.0
   },
   "srm": {
     "n_treatment": 11882655,
@@ -132,8 +178,12 @@
     "threshold": 0.001,
     "binomial_sd_users": 1335.0647849449106,
     "z_score": 0.0013482491793979363,
+    "closeness_p": 0.0010757468784456936,
     "underdispersed": true,
-    "dispersion_note": "Under-dispersed. The arms sit 0.0013 sd from the designed split (1 sd = 1,335 users). Independent Bernoulli assignment lands this close about 0.80% of the time. The ratio looks constructed - most likely the control arm was downsampled to exactly 15% - so this PASS demonstrates the guardrail runs correctly rather than validating the upstream randomiser."
+    "arm_ratio": 5.666672389299249,
+    "nearest_simple_ratio": "17/3",
+    "ratio_looks_constructed": true,
+    "dispersion_note": "Under-dispersed. The arms sit 0.0013 sd from the designed split (1 sd = 1,335 users). Independent assignment lands at least this close 0.108% of the time. The split looks constructed rather than randomised, so this PASS shows the guardrail runs - it does not validate the upstream randomiser. Corroborated by the arm ratio itself: 5.66667239 against 17/3 = 5.66666667, agreeing to roughly seven significant figures."
   },
   "balance": {
     "n_treatment": 11882655,
@@ -273,6 +323,109 @@
       }
     ]
   },
+  "robustness": {
+    "specifications": [
+      {
+        "spec": "all",
+        "label": "every row is a user",
+        "n_treatment": 11882655,
+        "n_control": 2096937,
+        "n_total": 13979592,
+        "treatment_share": 0.8500001287591226,
+        "srm_p": 0.9989242531217909,
+        "srm_passed": true,
+        "srm_z": 0.0013482491793979363,
+        "max_abs_smd": 0.048836340221728926,
+        "balance_passed": true,
+        "conversion_rate_treatment": 0.0030894610674129645,
+        "conversion_rate_control": 0.0019375880152813366,
+        "lift_unadjusted": 0.5944881177252619,
+        "lift_unadjusted_ci": [
+          0.5436975672882334,
+          0.6469497727026883
+        ],
+        "lift_cuped": 0.4736454982691847,
+        "lift_cuped_ci": [
+          0.4318497710310485,
+          0.5166612437317932
+        ],
+        "p_value": 3.194807477026664e-246
+      },
+      {
+        "spec": "dedup",
+        "label": "one row per distinct record",
+        "n_treatment": 10672159,
+        "n_control": 2047888,
+        "n_total": 12720047,
+        "treatment_share": 0.839003110601714,
+        "srm_p": 0.0,
+        "srm_passed": false,
+        "srm_z": -109.83964554721815,
+        "max_abs_smd": 0.08491155316606247,
+        "balance_passed": true,
+        "conversion_rate_treatment": 0.0034398850316978975,
+        "conversion_rate_control": 0.0019839952184885113,
+        "lift_unadjusted": 0.7338171985709434,
+        "lift_unadjusted_ci": [
+          0.6785905715274012,
+          0.7908608144540161
+        ],
+        "lift_cuped": 0.44244121607846454,
+        "lift_cuped_ci": [
+          0.4046478108129994,
+          0.48125148939481344
+        ],
+        "p_value": 0.0
+      },
+      {
+        "spec": "singleton",
+        "label": "drop all duplicated records",
+        "n_treatment": 9756726,
+        "n_control": 2001716,
+        "n_total": 11758442,
+        "treatment_share": 0.8297635009808272,
+        "srm_p": 0.0,
+        "srm_passed": false,
+        "srm_z": -194.3368587578336,
+        "max_abs_smd": 0.1221318397171432,
+        "balance_passed": false,
+        "conversion_rate_treatment": 0.0037626351298581102,
+        "conversion_rate_control": 0.002029758467235112,
+        "lift_unadjusted": 0.8537354028055766,
+        "lift_unadjusted_ci": [
+          0.7946912016507248,
+          0.9147221206935623
+        ],
+        "lift_cuped": 0.4210800837421358,
+        "lift_cuped_ci": [
+          0.38598573422323534,
+          0.4570630523411201
+        ],
+        "p_value": 0.0
+      }
+    ],
+    "lift_range": [
+      0.4210800837421358,
+      0.8537354028055766
+    ],
+    "lift_range_unadjusted": [
+      0.5944881177252619,
+      0.8537354028055766
+    ],
+    "lift_range_cuped": [
+      0.4210800837421358,
+      0.4736454982691847
+    ],
+    "lowest_ci_bound": 0.38598573422323534,
+    "spread_factor": 2.0274893916103465,
+    "spread_factor_unadjusted": 1.4360848894209923,
+    "spread_factor_cuped": 1.1248347204168394,
+    "adjustment_stability_gain": 3.493298082174959,
+    "srm_stable": false,
+    "sign_stable": true,
+    "note": "The specification is a choice about the duplicate rows, not about the statistics. The ship decision survives all three; the magnitude does not.",
+    "adjustment_note": "The two lift columns move in opposite directions as the specification tightens, and the adjusted one barely moves at all. That is the strongest argument in this project for adjusting: changing the duplicate rule changes the composition of the arms, and covariate adjustment is what absorbs composition differences. The case for CUPED here is specification robustness, not the 10.7% variance reduction."
+  },
   "power": {
     "baseline_rate": 0.0019375880152813366,
     "mde_relative": 0.05,
@@ -358,46 +511,50 @@
       "ci_width": 0.0001347345501123017,
       "z": 33.51226088718115,
       "p_value": 3.194807477026664e-246,
-      "relative_lift": 0.594488117725262,
-      "relative_ci_low": 0.5597194906875017,
-      "relative_ci_high": 0.6292567447630222,
+      "relative_lift": 0.5944881177252619,
+      "relative_ci_low": 0.5436975672882334,
+      "relative_ci_high": 0.6469497727026883,
       "var_treatment": 0.0030799165569202138,
       "var_control": 0.0019338346901831586,
       "significant": true
     },
     "cuped": {
       "covariate": "f_index",
-      "theta": 1.2466231340796439,
-      "corr_pooled": 0.3437089892300032,
-      "theoretical_variance_reduction": 0.11813586927751046,
-      "observed_variance_reduction": 0.10700786194132605,
-      "observed_ci_width_reduction": 0.055017387430501885,
-      "covariate_mean_treatment": 0.0021173724154607,
-      "covariate_mean_control": 0.001982379143151164,
-      "covariate_imbalance": 0.00013499327230953595,
-      "covariate_imbalance_p": 1.3519795715923573e-34,
-      "point_estimate_shift": -0.00016828573620618044,
-      "point_estimate_shift_pct": -0.14609746785442632,
-      "expected_shift_from_chance_pct": 0.011909211359141234,
-      "shift_vs_chance_multiple": 12.267602232307793,
+      "theta": 1.2609365376783883,
+      "corr_pooled": 0.34356752692625764,
+      "theoretical_variance_reduction": 0.11803864555822477,
+      "achievable_variance_reduction": 0.1070149284459457,
+      "variance_reduction_treatment": 0.11964364392665228,
+      "variance_reduction_control": 0.10346556332246559,
+      "control_share_of_variance": 0.7806065373069293,
+      "observed_variance_reduction": 0.10701492844594562,
+      "observed_ci_width_reduction": 0.055021126398027254,
+      "covariate_mean_treatment": 0.0020900068054102816,
+      "covariate_mean_control": 0.0019576168919620447,
+      "covariate_imbalance": 0.00013238991344823687,
+      "covariate_imbalance_p": 4.213349960452023e-34,
+      "point_estimate_shift": -0.000166935279086961,
+      "point_estimate_shift_pct": -0.1449250668535345,
+      "expected_shift_from_chance_pct": 0.011903295985174851,
+      "shift_vs_chance_multiple": 12.175204836881626,
       "covariate_is_safe": true,
-      "warning": "Covariate is pre-assignment but NOT balanced across arms: the arms differ by +0.000135 (p=1.35e-34), and the adjustment moved the point estimate by -14.6%. Chance imbalance alone would have moved it about 1.2%, so this is 12x what randomisation explains - the assignment is the thing in question, not the adjustment. Because the covariate is fixed before assignment, the adjusted estimate is the better of the two: it corrects for the imbalance rather than inheriting it. See the balance stage for the per-feature picture.",
+      "warning": "Covariate is pre-assignment but NOT balanced across arms: the arms differ by +0.000132 (p=4.21e-34), and the adjustment moved the point estimate by -14.5%. Chance imbalance alone would have moved it about 1.2%, so this is 12x what randomisation explains - the assignment is the thing in question, not the adjustment. Because the covariate is fixed before assignment, the adjusted estimate is the better of the two: it corrects for the imbalance rather than inheriting it. See the balance stage for the per-feature picture.",
       "test": {
         "label": "cuped[f_index]",
-        "mean_treatment": 0.0030642182286503613,
-        "mean_control": 0.002080630912724914,
-        "absolute_effect": 0.0009835873159254474,
-        "se": 3.248064968866699e-05,
-        "ci_low": 0.000919926412341198,
-        "ci_high": 0.0010472482195096968,
-        "ci_width": 0.00012732180716849882,
-        "z": 30.282254984223318,
-        "p_value": 1.963403486184217e-201,
-        "relative_lift": 0.5076349090560571,
-        "relative_ci_low": 0.47477916104245993,
-        "relative_ci_high": 0.5404906570696543,
-        "var_treatment": 0.002711078008770793,
-        "var_control": 0.0017338279786595215,
+        "mean_treatment": 0.0030644207970443606,
+        "mean_control": 0.0020794830239996938,
+        "absolute_effect": 0.0009849377730446669,
+        "se": 3.2480521174033225e-05,
+        "ci_low": 0.0009212771213444711,
+        "ci_high": 0.0010485984247448625,
+        "ci_width": 0.0001273213034003914,
+        "z": 30.32395224717275,
+        "p_value": 5.5418868387379995e-202,
+        "relative_lift": 0.4736454982691949,
+        "relative_ci_low": 0.43184977103105826,
+        "relative_ci_high": 0.5166612437318039,
+        "var_treatment": 0.002711424117060251,
+        "var_control": 0.0017337493945908324,
         "significant": true
       }
     },
@@ -406,6 +563,10 @@
       "theta": 0.06206759025709019,
       "corr_pooled": 0.2435650610427756,
       "theoretical_variance_reduction": 0.059323938960771,
+      "achievable_variance_reduction": 0.049563199428885416,
+      "variance_reduction_treatment": 0.060704292423116146,
+      "variance_reduction_control": 0.04643193821933611,
+      "control_share_of_variance": 0.7806065373069293,
       "observed_variance_reduction": 0.04956319942888554,
       "observed_ci_width_reduction": 0.02509651730485951,
       "covariate_mean_treatment": 0.048543360048743316,
@@ -429,55 +590,286 @@
         "ci_width": 0.00013135318214384586,
         "z": 15.218114127965402,
         "p_value": 2.6814989053829737e-52,
-        "relative_lift": 0.26318546998282183,
-        "relative_ci_low": 0.22928941439518097,
-        "relative_ci_high": 0.2970815255704627,
+        "relative_lift": 0.2053557836095099,
+        "relative_ci_low": 0.1749623372299307,
+        "relative_ci_high": 0.2365354352601503,
         "var_treatment": 0.002892952401610132,
         "var_control": 0.0018440429973221651,
         "significant": true
       }
     },
     "lin_robustness": {
-      "theta_treatment": 1.289111386458739,
-      "theta_control": 0.9969361469643282,
-      "theta_gap": 0.2921752394944107,
-      "variance_reduction": 0.11243960424297683,
+      "theta_treatment": 1.3038108541623932,
+      "theta_control": 1.0089212844246653,
+      "theta_gap": 0.29488956973772784,
+      "variance_reduction": 0.11241794748562739,
       "test": {
         "label": "lin",
-        "mean_treatment": 0.003063357885155371,
-        "mean_control": 0.002051980754457716,
-        "absolute_effect": 0.0010113771306976549,
-        "se": 3.2381715098536796e-05,
-        "ci_low": 0.0009479101353468859,
-        "ci_high": 0.0010748441260484238,
-        "ci_width": 0.00012693399070153792,
-        "z": 31.232969829425592,
-        "p_value": 3.802731407489731e-214,
-        "relative_lift": 0.5219773877218185,
-        "relative_ci_low": 0.4892217168308867,
-        "relative_ci_high": 0.5547330586127501,
-        "var_treatment": 0.0027106768972007316,
-        "var_control": 0.0017204424425587598,
+        "mean_treatment": 0.0030635693787179432,
+        "mean_control": 0.0020511233837727273,
+        "absolute_effect": 0.001012445994945216,
+        "se": 3.238211015822624e-05,
+        "ci_low": 0.0009489782252916838,
+        "ci_high": 0.001075913764598748,
+        "ci_width": 0.00012693553930706418,
+        "z": 31.26559665192225,
+        "p_value": 1.3704139228576636e-214,
+        "relative_lift": 0.493605603131966,
+        "relative_ci_low": 0.4508749265928007,
+        "relative_ci_high": 0.5375947690722698,
+        "var_treatment": 0.002711025217374741,
+        "var_control": 0.0017204346256972675,
         "significant": true
       },
       "note": "Separate slope per arm (Lin 2013). Guards against a treatment-by-covariate interaction that a single pooled theta would absorb into the effect estimate."
     },
     "cace": {
-      "compliance_rate": 0.036036727482199896,
-      "cace_absolute": 0.031963863885825596,
-      "cace_se": 0.000953796104459552,
-      "cace_ci_low": 0.03009445787249027,
-      "cace_ci_high": 0.03383326989916092,
-      "note": "Wald/IV estimate of the effect among users actually exposed. Valid under one-sided noncompliance (control exposure is exactly 0) plus the exclusion restriction. ITT remains the primary result."
+      "unadjusted": {
+        "compliance_rate": 0.036036727482199896,
+        "cace_absolute": 0.031963863885825596,
+        "cace_se": 0.000953796104459552,
+        "cace_ci_low": 0.03009445787249027,
+        "cace_ci_high": 0.03383326989916092,
+        "note": "Wald/IV estimate of the effect among users actually exposed. Valid under one-sided noncompliance (control exposure is exactly 0) plus the exclusion restriction. ITT remains the primary result."
+      },
+      "cuped": {
+        "compliance_rate": 0.036036727482199896,
+        "cace_absolute": 0.02733149877527504,
+        "cace_se": 0.0009013171684381376,
+        "cace_ci_low": 0.02556494958648867,
+        "cace_ci_high": 0.029098047964061412,
+        "note": "Wald/IV estimate of the effect among users actually exposed. Valid under one-sided noncompliance (control exposure is exactly 0) plus the exclusion restriction. ITT remains the primary result."
+      },
+      "lin": {
+        "compliance_rate": 0.036036727482199896,
+        "cace_absolute": 0.028094837286357564,
+        "cace_se": 0.0008985863151480991,
+        "cace_ci_low": 0.026333640471666732,
+        "cace_ci_high": 0.029856034101048395,
+        "note": "Wald/IV estimate of the effect among users actually exposed. Valid under one-sided noncompliance (control exposure is exactly 0) plus the exclusion restriction. ITT remains the primary result."
+      }
     }
+  },
+  "sequential": {
+    "n_peeks": [
+      1,
+      2,
+      5,
+      10,
+      20,
+      30,
+      50
+    ],
+    "alpha_inflation": [
+      0.05025,
+      0.07575,
+      0.135,
+      0.20275,
+      0.24675,
+      0.288,
+      0.3215
+    ],
+    "fixed_horizon_ci": [
+      0.001084505777075477,
+      0.0012192403271877787
+    ],
+    "always_valid_ci": [
+      0.0009491721362712614,
+      0.0013545739679919943
+    ],
+    "width_penalty": 3.008892903734262,
+    "still_significant": true,
+    "verdict": "Peeking 30 times at a null experiment this size rejects 28.8% of the time against a nominal 5%. The always-valid interval is 3.01x wider than the fixed-horizon one (5.90 standard errors instead of 1.96), and the effect remains significant under it. At 14M rows that penalty is cheap; on a two-week experiment with thousands of users it would not be."
+  },
+  "heterogeneity": {
+    "n_bins": 10,
+    "deciles": [
+      {
+        "bin": 0,
+        "n_treatment": 1182074,
+        "n_control": 214586,
+        "rate_treatment": 0.00024786942272649596,
+        "rate_control": 0.0001957257230201411,
+        "uplift": 5.214369970635486e-05,
+        "se": 3.3489824065244e-05,
+        "uplift_relative": 0.2664120939330444,
+        "mean_score": -0.0009300843447951582,
+        "incremental_conversions": 72.82701963187758
+      },
+      {
+        "bin": 1,
+        "n_treatment": 1180749,
+        "n_control": 214096,
+        "rate_treatment": 0.00027948361590820743,
+        "rate_control": 0.00022419849039683132,
+        "uplift": 5.528512551137611e-05,
+        "se": 3.5827169537872315e-05,
+        "uplift_relative": 0.2465900881559079,
+        "mean_score": -0.000663823587262359,
+        "incremental_conversions": 77.1141808939154
+      },
+      {
+        "bin": 2,
+        "n_treatment": 1186401,
+        "n_control": 213385,
+        "rate_treatment": 0.00014919070364910347,
+        "rate_control": 8.904093539845818e-05,
+        "uplift": 6.014976825064529e-05,
+        "se": 2.3301782444363935e-05,
+        "uplift_relative": 0.675529384113892,
+        "mean_score": -0.00047334360013267856,
+        "incremental_conversions": 84.19680350049777
+      },
+      {
+        "bin": 3,
+        "n_treatment": 1185090,
+        "n_control": 211711,
+        "rate_treatment": 0.00010716485667755191,
+        "rate_control": 5.19576214745573e-05,
+        "uplift": 5.5207235202994615e-05,
+        "se": 1.832546980840779e-05,
+        "uplift_relative": 1.062543542914654,
+        "mean_score": -0.0003824835085125236,
+        "incremental_conversions": 77.11352133877809
+      },
+      {
+        "bin": 4,
+        "n_treatment": 1187658,
+        "n_control": 211288,
+        "rate_treatment": 0.00014313884973620353,
+        "rate_control": 4.732876452993071e-05,
+        "uplift": 9.581008520627283e-05,
+        "se": 1.8560584179502727e-05,
+        "uplift_relative": 2.0243521283062975,
+        "mean_score": -0.00027391542959554095,
+        "incremental_conversions": 134.03313545897456
+      },
+      {
+        "bin": 5,
+        "n_treatment": 1186267,
+        "n_control": 211334,
+        "rate_treatment": 0.00020821619416202253,
+        "rate_control": 0.000146687234425128,
+        "uplift": 6.152895973689454e-05,
+        "se": 2.9487035819101748e-05,
+        "uplift_relative": 0.4194568121624797,
+        "mean_score": -0.00012919036762308177,
+        "incremental_conversions": 85.99293565724355
+      },
+      {
+        "bin": 6,
+        "n_treatment": 1183806,
+        "n_control": 212086,
+        "rate_treatment": 0.00031593014395939873,
+        "rate_control": 0.00019803287345699386,
+        "uplift": 0.00011789727050240487,
+        "se": 3.4646009027765447e-05,
+        "uplift_relative": 0.5953419169469771,
+        "mean_score": 8.835197455225526e-05,
+        "incremental_conversions": 164.57185671614295
+      },
+      {
+        "bin": 7,
+        "n_treatment": 1186587,
+        "n_control": 211282,
+        "rate_treatment": 0.0008848908676734196,
+        "rate_control": 0.0005963593680483903,
+        "uplift": 0.00028853149962502925,
+        "se": 5.971580032913299e-05,
+        "uplift_relative": 0.4838215262204399,
+        "mean_score": 0.0006334986658401722,
+        "incremental_conversions": 403.32923884934
+      },
+      {
+        "bin": 8,
+        "n_treatment": 1191390,
+        "n_control": 207548,
+        "rate_treatment": 0.002101746699233668,
+        "rate_control": 0.0014599032512960857,
+        "uplift": 0.0006418434479375824,
+        "se": 9.372399642888096e-05,
+        "uplift_relative": 0.43964793377079,
+        "mean_score": 0.002095857727790546,
+        "incremental_conversions": 897.8991893709057
+      },
+      {
+        "bin": 9,
+        "n_treatment": 1212633,
+        "n_control": 189621,
+        "rate_treatment": 0.02592622829825677,
+        "rate_control": 0.01809398748028963,
+        "uplift": 0.00783224081796714,
+        "se": 0.0003384096603053551,
+        "uplift_relative": 0.43286427751202183,
+        "mean_score": 0.010008443151196113,
+        "incremental_conversions": 10982.791015957693
+      }
+    ],
+    "qini_coefficient": 0.8143314033819907,
+    "qini_curve": [
+      {
+        "population_share": 0.0,
+        "incremental_conversions": 0.0
+      },
+      {
+        "population_share": 0.10030721926648503,
+        "incremental_conversions": 10982.791015957693
+      },
+      {
+        "population_share": 0.2003772356160323,
+        "incremental_conversions": 11880.6902053286
+      },
+      {
+        "population_share": 0.3003707833533339,
+        "incremental_conversions": 12284.019444177939
+      },
+      {
+        "population_share": 0.40022291065433097,
+        "incremental_conversions": 12448.59130089408
+      },
+      {
+        "population_share": 0.5001972875889368,
+        "incremental_conversions": 12534.584236551324
+      },
+      {
+        "population_share": 0.6002678762012511,
+        "incremental_conversions": 12668.617372010298
+      },
+      {
+        "population_share": 0.700185026859153,
+        "incremental_conversions": 12745.730893349077
+      },
+      {
+        "population_share": 0.8003157030620064,
+        "incremental_conversions": 12829.927696849574
+      },
+      {
+        "population_share": 0.9000929354733672,
+        "incremental_conversions": 12907.04187774349
+      },
+      {
+        "population_share": 1.0,
+        "incremental_conversions": 12979.868897375367
+      }
+    ],
+    "ate_absolute": 0.0011518730521316279,
+    "top_decile_uplift": 0.00783224081796714,
+    "bottom_decile_uplift": 5.214369970635486e-05,
+    "top_vs_bottom_ratio": 150.20493102856312,
+    "share_of_effect_in_top_30pct": 0.9463901015719708,
+    "heterogeneity_p": 0.0,
+    "heterogeneity_detected": true,
+    "verdict": "Heterogeneity detected (chi2=13915.2 on 9 df, p=0.00e+00). Top decile uplift +0.7832 pp against +0.0052 pp in the bottom, and the top 30% of users by predicted uplift carry 94.6% of the incremental conversions while being 30% of the population. Qini coefficient 0.814."
   },
   "config": {
     "alpha": 0.05,
     "power_target": 0.8,
     "mde_relative": 0.05,
     "design_treatment_share": 0.85,
+    "min_practical_lift": 0.1,
     "metric": "conversion",
-    "covariate": "f_index"
+    "covariate": "f_index",
+    "covariate_folds": 2
   },
-  "runtime_seconds": 0.2
+  "runtime_seconds": 0.3
 }
