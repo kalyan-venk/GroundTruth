@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-07-25T21:45:08+00:00",
+  "generated_utc": "2026-07-25T21:48:38+00:00",
   "dataset": {
     "name": "Criteo Uplift Prediction v2.1",
     "source": "huggingface.co/datasets/criteo/criteo-uplift",
@@ -113,7 +113,7 @@
     "observed_ratio_label": "85/15",
     "total_rows": 13979592,
     "cells_parquet": "/Users/kalyanvenkatesh/Me/GroundTruth/data/aggregate/cells.parquet",
-    "elapsed_seconds": 31.9
+    "elapsed_seconds": 29.5
   },
   "srm": {
     "n_treatment": 11882655,
@@ -479,5 +479,5 @@
     "metric": "conversion",
     "covariate": "f_index"
   },
-  "runtime_seconds": 0.1
+  "runtime_seconds": 29.9
 }
