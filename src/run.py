@@ -88,7 +88,7 @@ def main(argv=None) -> int:
         rob_res = _cached(results_dir / "robustness.json")
         if rob_res:
             print("  reusing results/robustness.json")
-    if rob_res is None and not (args.fast or args.skip_spark):
+    else:
         from src import robustness
         rob_res = robustness.run()
     if rob_res:
@@ -128,7 +128,7 @@ def main(argv=None) -> int:
         hte_res = _cached(results_dir / "hte.json")
         if hte_res:
             print("  reusing results/hte.json\n")
-    if hte_res is None and not (args.fast or args.skip_spark):
+    else:
         from src import hte
         hte_res = hte.run()
     if hte_res:

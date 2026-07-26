@@ -12,10 +12,11 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import pandas as pd
 import pytest
 from scipy import stats
 
-from src import analyze, balance, power, srm
+from src import analyze, ancova, balance, config, power, srm
 
 
 RNG = np.random.default_rng(20260725)
@@ -32,7 +33,6 @@ def sums_from(y: np.ndarray, x: np.ndarray):
 # --- moments ----------------------------------------------------------------
 
 def test_moments_match_numpy():
-    """Moments rebuilt from sums must equal moments computed directly."""
     y = RNG.binomial(1, 0.03, 50_000).astype(float)
     x = RNG.normal(5.0, 2.0, 50_000)
     m = analyze.moments(**sums_from(y, x))
@@ -106,7 +106,6 @@ def test_srm_flags_underdispersion():
 # --- Power ------------------------------------------------------------------
 
 def test_required_n_round_trips_to_the_target_power():
-    """Feed the required N back in and 80% power must come out."""
     baseline, mde = 0.002, 0.05
     n, _ = power.required_n_balanced(baseline, mde, alpha=0.05, power=0.80)
     achieved = power.achieved_power(baseline, mde, 0.05, n, n)
@@ -114,7 +113,6 @@ def test_required_n_round_trips_to_the_target_power():
 
 
 def test_unbalanced_allocation_costs_users():
-    """An 85/15 design must need close to 2x the users of a balanced one."""
     baseline, mde = 0.002, 0.05
     n_bal, _ = power.required_n_balanced(baseline, mde, 0.05, 0.80)
     n_t, n_c = power.required_n_unbalanced(baseline, mde, 0.05, 0.80, 0.85)
@@ -138,7 +136,6 @@ def test_smaller_mde_needs_more_users():
 # --- The unadjusted test ----------------------------------------------------
 
 def test_unadjusted_matches_scipy_on_a_known_effect():
-    """Cross-check the z-test against an independent implementation."""
     n_t, n_c, p_t, p_c = 200_000, 200_000, 0.030, 0.025
     y_t = np.zeros(n_t); y_t[:int(n_t * p_t)] = 1.0
     y_c = np.zeros(n_c); y_c[:int(n_c * p_c)] = 1.0
@@ -204,6 +201,49 @@ def test_adjusted_lift_uses_the_adjusted_baseline():
     assert res.test.relative_lift != pytest.approx(wrong, rel=1e-6)
 
 
+def _ancova_cells(n_t=60_000, n_c=40_000, base=0.03, effect=0.004):
+    """Two arms of 12-covariate sufficient statistics, the shape ingest emits."""
+    rows = []
+    for treat, n in ((1, n_t), (0, n_c)):
+        x = RNG.normal(0.0, 1.0, (n, len(config.FEATURES)))
+        p = base + effect * treat + 0.004 * x[:, 0]
+        y = RNG.binomial(1, np.clip(p, 1e-6, 1 - 1e-6)).astype(float)
+
+        row = {"treatment": treat, "n": n, "sum_y": y.sum(), "sum_yy": (y * y).sum()}
+        for i, fi in enumerate(config.FEATURES):
+            row[f"sum_{fi}"] = x[:, i].sum()
+            row[f"sum_{fi}_y"] = (x[:, i] * y).sum()
+            for j, fj in enumerate(config.FEATURES):
+                if j >= i:
+                    row[f"sum_{fi}_{fj}"] = (x[:, i] * x[:, j]).sum()
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def test_ancova_relative_ci_is_not_the_fixed_baseline_shortcut():
+    """The same bug as the test above, in the stage nobody re-checked.
+
+    The review caught analyze.py dividing the absolute interval by the control
+    mean. ancova.py was doing it too and was not part of that fix, so the forest
+    plot shipped a pooled interval 1.37x too narrow on the real data. Worth a
+    test because the failure mode here is a fix landing in one of two call
+    sites, not the maths being hard.
+    """
+    res = ancova.analyse(_ancova_cells())
+    lift = res.relative_lift_pooled
+    lo, hi = res.relative_ci_pooled
+    assert lo < lift < hi
+
+    # The tell is the shape, not the width. A ratio interval built on the log
+    # scale is symmetric in log space; the fixed-baseline shortcut divides an
+    # already-symmetric absolute interval, so it stays symmetric in linear
+    # space. Checking the shape catches the bug on any data, where a width
+    # threshold only catches it when the arms happen to be lopsided enough.
+    assert math.log1p(hi) - math.log1p(lift) == pytest.approx(
+        math.log1p(lift) - math.log1p(lo), rel=1e-9)
+    assert (hi - lift) != pytest.approx(lift - lo, rel=1e-6)
+
+
 def test_variance_reduction_decomposes_by_arm_weight():
     """Observed reduction must equal the Var(diff)-weighted mix of arm reductions.
 
@@ -249,7 +289,6 @@ def _synthetic_experiment(n_t=400_000, n_c=400_000, rho=0.6, effect=0.01, shift=
 
 
 def test_cuped_reduces_variance_by_about_rho_squared():
-    """The headline CUPED guarantee: variance drops by roughly corr^2."""
     mt, mc = _synthetic_experiment(rho=0.6)
     unadj = analyze.unadjusted_test(mt, mc)
     res = analyze.cuped(mt, mc, unadj, "x", covariate_is_pre_assignment=True)
@@ -283,7 +322,6 @@ def test_cuped_does_not_move_the_point_estimate_when_arms_are_balanced():
 
 
 def test_shift_vs_chance_separates_real_imbalance_from_noise():
-    """A planted imbalance must register as many multiples of chance."""
     balanced_mt, balanced_mc = _synthetic_experiment(rho=0.7, effect=0.01, shift=0.0)
     skewed_mt, skewed_mc = _synthetic_experiment(rho=0.7, effect=0.01, shift=0.05)
 
@@ -326,7 +364,6 @@ def test_cuped_is_flagged_when_the_covariate_is_post_treatment():
 
 
 def test_useless_covariate_buys_nothing():
-    """An uncorrelated covariate must leave the interval alone, not widen it."""
     mt, mc = _synthetic_experiment(rho=0.0)
     unadj = analyze.unadjusted_test(mt, mc)
     res = analyze.cuped(mt, mc, unadj, "x", covariate_is_pre_assignment=True)
@@ -334,7 +371,6 @@ def test_useless_covariate_buys_nothing():
 
 
 def test_lin_matches_cuped_when_slopes_are_equal():
-    """No treatment-by-covariate interaction means the two must agree."""
     mt, mc = _synthetic_experiment(rho=0.6, effect=0.01)
     unadj = analyze.unadjusted_test(mt, mc)
     cup = analyze.cuped(mt, mc, unadj, "x", covariate_is_pre_assignment=True)

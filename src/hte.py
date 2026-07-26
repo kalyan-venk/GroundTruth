@@ -8,9 +8,8 @@ nine tenths is waste.
 The pipeline already had a signal that heterogeneity exists and walked past it.
 Lin's estimator fits the covariate slope separately per arm and gets 1.289 in
 treatment against 0.997 in control. A gap that size means the covariate relates
-to conversion differently depending on treatment, which is exactly what a
-treatment effect that varies across users looks like. This stage measures it
-properly.
+to conversion differently depending on treatment, which is what a treatment
+effect that varies across users looks like. This stage measures it properly.
 
 Method: the two-model (T-learner) uplift estimator.
 
@@ -107,7 +106,6 @@ def uplift_coefficients(cells: pd.DataFrame, features=None) -> np.ndarray:
 # --- Spark: score, bin, aggregate -------------------------------------------
 
 def compute_bins(verbose: bool = True) -> pd.DataFrame:
-    """Score every row out-of-fold, bin by uplift, aggregate per (bin, arm)."""
     from pyspark.sql import functions as F
 
     from src.ingest import _fold_expr, _read_raw, build_spark

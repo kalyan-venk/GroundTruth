@@ -55,7 +55,6 @@ class AncovaResult:
 
 
 def _design(row, features):
-    """Rebuild X'X, X'y, y'y and n for one arm from the emitted sums."""
     n = float(row["n"])
     p = len(features)
 
@@ -105,7 +104,6 @@ def analyse(cells, index_r2: float | None = None) -> AncovaResult:
     adj_c = ybar_c - beta_p[1:] @ (xbar_c - xbar_pooled)
     effect_pooled = adj_t - adj_c
 
-    # Lin: each arm keeps its own slope vector.
     lin_t = ybar_t - beta_t[1:] @ (xbar_t - xbar_pooled)
     lin_c = ybar_c - beta_c[1:] @ (xbar_c - xbar_pooled)
     effect_lin = lin_t - lin_c
@@ -134,16 +132,33 @@ def analyse(cells, index_r2: float | None = None) -> AncovaResult:
             f"can use one covariate without apology."
         )
 
-    # Relative intervals, from the same log-ratio construction the effect stage
-    # uses. Written out rather than approximated: an earlier version of the
-    # forest plot padded the point estimate by +/-8% to draw a bar, which is a
-    # fabricated interval no matter how harmless the intent.
+    # Relative intervals on the log scale, the same Katz construction analyze.py
+    # uses. The shortcut - take the absolute interval and divide both endpoints
+    # by the control mean - is what the effect stage was caught doing, and it
+    # came out 1.49x too narrow. It treats the baseline as a known constant when
+    # control is the small arm of an 85/15 split, so the baseline's own sampling
+    # error is nowhere near second-order. This stage had the identical bug: the
+    # review fixed analyze.py and nobody checked here.
+    #
+    # Also worth knowing: an even earlier forest plot padded the point estimate
+    # by +/-8% to have something to draw, which is a fabricated interval however
+    # harmless the intent.
+    #
+    # One thing this does NOT model. adj_t and adj_c share the pooled slope, so
+    # they are correlated, and the form below assumes independent arms. If that
+    # covariance is positive - which is what you would expect when one fitted
+    # slope moves both arms together - ignoring it errs wide, not narrow. I have
+    # not verified the sign, so treat the pooled interval as approximate. The
+    # Lin intervals fit per-arm slopes and do not have this problem.
     crit = 1.959964
 
-    def rel_ci(effect, se, ctl):
-        if ctl <= 0:
+    def rel_ci(mean_t, mean_c, var_mean_t, var_mean_c):
+        if mean_t <= 0 or mean_c <= 0:
             return (float("nan"), float("nan"))
-        return ((effect - crit * se) / ctl, (effect + crit * se) / ctl)
+        se_log = float(np.sqrt(var_mean_t / mean_t ** 2 + var_mean_c / mean_c ** 2))
+        log_ratio = float(np.log(mean_t / mean_c))
+        return (float(np.exp(log_ratio - crit * se_log) - 1.0),
+                float(np.exp(log_ratio + crit * se_log) - 1.0))
 
     return AncovaResult(
         n_covariates=len(features),
@@ -153,8 +168,8 @@ def analyse(cells, index_r2: float | None = None) -> AncovaResult:
         se_lin=se_lin,
         relative_lift_pooled=float(effect_pooled / adj_c) if adj_c else float("nan"),
         relative_lift_lin=float(effect_lin / lin_c) if lin_c else float("nan"),
-        relative_ci_pooled=rel_ci(effect_pooled, se_pooled, adj_c),
-        relative_ci_lin=rel_ci(effect_lin, se_lin, lin_c),
+        relative_ci_pooled=rel_ci(adj_t, adj_c, var_pool / n_t, var_pool / n_c),
+        relative_ci_lin=rel_ci(lin_t, lin_c, var_t / n_t, var_c / n_c),
         adjusted_control_mean=float(adj_c),
         r2_control=r2_c,
         r2_index_only=index_r2 if index_r2 is not None else float("nan"),

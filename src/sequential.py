@@ -13,13 +13,11 @@ daily for a month and the actual false-positive rate is roughly a quarter, not
 a twentieth. Left running forever, a random walk crosses any fixed boundary
 with probability 1.
 
-Two things here:
-
-  1. How bad the inflation is, by simulation. No formula needed and the
-     simulation is more convincing than one.
-  2. An always-valid confidence sequence, which is the fix. It holds at every
-     sample size simultaneously, so you can look whenever you like and stop
-     whenever you like without spending anything you did not budget for.
+So this stage measures how bad the inflation actually is, by simulation - no
+formula needed, and the simulation is more convincing than one would be. Then
+it builds the fix: an always-valid confidence sequence, which holds at every
+sample size simultaneously, so you can look whenever you like and stop whenever
+you like without spending anything you did not budget for.
 
 The Criteo log has no timestamp, so a real sequential replay is impossible.
 The alpha-inflation figures below are therefore simulated under this

@@ -11,7 +11,7 @@ actually guarantees is that arms are comparable on *everything*, observed and
 unobserved. Observed imbalance is the only symptom you can see. If the observed
 features are off, the sensible inference is that unobserved ones are too.
 
-Two tests, because they answer different questions:
+Hence two tests:
 
   - Standardised mean difference, per feature. Scale-free measure of how far
     apart the arms are. Convention: |SMD| < 0.1 is negligible. This does not
@@ -58,7 +58,6 @@ class BalanceResult:
 
 
 def _arm_moments(row, features):
-    """Mean vector and covariance matrix for one arm, from sums."""
     n = float(row["n"])
     mean = np.array([row[f"sum_{f}"] / n for f in features])
 

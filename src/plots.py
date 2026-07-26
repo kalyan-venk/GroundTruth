@@ -145,12 +145,6 @@ def power_curve(summary):
 # --- 3. Forest -------------------------------------------------------------
 
 def forest_plot(summary, ancova=None):
-    """Every estimator on one axis, with its interval.
-
-    The reason to draw this rather than tabulate it: the eye reads "do these
-    overlap" instantly and reads it correctly, which is exactly the judgement
-    the reader needs to make about five competing adjustments.
-    """
     e = summary["effect"]
     rows = [
         ("unadjusted", e["unadjusted"], BLUE),

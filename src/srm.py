@@ -57,7 +57,8 @@ def check(
 ) -> SRMResult:
     """Chi-square goodness-of-fit on the arm counts.
 
-    Two choices in here are worth defending.
+    The arithmetic is three lines. The choices around it are the part worth
+    defending.
 
     *What we test against.* The naive version of this check tests every
     experiment against 50/50. That is wrong for any experiment with a

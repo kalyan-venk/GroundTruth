@@ -97,7 +97,6 @@ def required_n_unbalanced(baseline: float, mde_relative: float, alpha: float,
 
 def achieved_power(baseline: float, mde_relative: float, alpha: float,
                    n_treatment: int, n_control: int) -> float:
-    """Power the experiment actually had, given the arm sizes it actually got."""
     treated = baseline * (1.0 + mde_relative)
     h = _cohens_h(baseline, treated)
     n_eff = 2.0 / (1.0 / n_treatment + 1.0 / n_control)  # harmonic mean per arm

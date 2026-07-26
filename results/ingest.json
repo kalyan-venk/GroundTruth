@@ -17,7 +17,7 @@
     "visit",
     "exposure"
   ],
-  "source_file": "/Users/kalyanvenkatesh/Me/GroundTruth/data/raw/criteo-research-uplift-v2.1.csv",
+  "source_file": "/workspace/GroundTruth/data/raw/criteo-research-uplift-v2.1.csv",
   "quality": {
     "rows": 13979592,
     "bad_treatment": 0,
@@ -161,6 +161,6 @@
   "observed_treatment_share": 0.8500001287591226,
   "observed_ratio_label": "85/15",
   "total_rows": 13979592,
-  "cells_parquet": "/Users/kalyanvenkatesh/Me/GroundTruth/data/aggregate/cells.parquet",
+  "cells_parquet": "/workspace/GroundTruth/data/aggregate/cells.parquet",
   "elapsed_seconds": 37.6
 }

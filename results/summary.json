@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-07-25T22:59:43+00:00",
+  "generated_utc": "2026-07-26T18:18:54+00:00",
   "dataset": {
     "name": "Criteo Uplift Prediction v2.1",
     "source": "huggingface.co/datasets/criteo/criteo-uplift",
@@ -74,7 +74,7 @@
       "visit",
       "exposure"
     ],
-    "source_file": "/Users/kalyanvenkatesh/Me/GroundTruth/data/raw/criteo-research-uplift-v2.1.csv",
+    "source_file": "/workspace/GroundTruth/data/raw/criteo-research-uplift-v2.1.csv",
     "quality": {
       "rows": 13979592,
       "bad_treatment": 0,
@@ -218,7 +218,7 @@
     "observed_treatment_share": 0.8500001287591226,
     "observed_ratio_label": "85/15",
     "total_rows": 13979592,
-    "cells_parquet": "/Users/kalyanvenkatesh/Me/GroundTruth/data/aggregate/cells.parquet",
+    "cells_parquet": "/workspace/GroundTruth/data/aggregate/cells.parquet",
     "elapsed_seconds": 37.6
   },
   "srm": {
@@ -931,7 +931,7 @@
     "covariate": "f_index",
     "covariate_folds": 2
   },
-  "runtime_seconds": 79.2,
+  "runtime_seconds": 0.2,
   "ancova": {
     "n_covariates": 12,
     "effect_pooled_slope": 0.0009158322953970316,
@@ -941,12 +941,12 @@
     "relative_lift_pooled": 0.4283147401587763,
     "relative_lift_lin": 0.4885663855916353,
     "relative_ci_pooled": [
-      0.39356058025489216,
-      0.4630689000626604
+      0.38139850997502367,
+      0.4768243792240072
     ],
     "relative_ci_lin": [
-      0.45761656746028523,
-      0.5195162037229853
+      0.4459525158598696,
+      0.5324361346649409
     ],
     "adjusted_control_mean": 0.002138222688898198,
     "r2_control": 0.11056680293062793,

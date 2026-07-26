@@ -117,7 +117,6 @@ def _read_raw(spark):
 # --- The pre-assignment covariate ------------------------------------------
 
 def _fit_one_fold(pdf):
-    """OLS of conversion on f0..f11. Returns coefficients and in-sample R^2."""
     X = pdf[config.FEATURES].to_numpy(dtype=np.float64)
     y = pdf["conversion"].to_numpy(dtype=np.float64)
     X1 = np.column_stack([np.ones(len(X)), X])
@@ -150,8 +149,6 @@ def _fit_covariate_model(df, n_folds: int = 2, seed: int = 7):
     MLRATE). A linear probability model on a binary outcome is not calibrated,
     but calibration is irrelevant here -- we only need something correlated
     with Y, and theta rescales it anyway.
-
-    Two things make it legitimate rather than merely convenient.
 
     *Control rows only.* Fitting on treatment rows would let the treatment
     effect into the coefficients, and the covariate would then partly encode
@@ -475,7 +472,6 @@ def run(verbose: bool = True) -> dict:
 
 
 def load_cells() -> pd.DataFrame:
-    """Read back the Spark aggregate for the stats stages."""
     if not config.CELL_PARQUET.exists():
         raise FileNotFoundError(
             f"No aggregate at {config.CELL_PARQUET}. Run stage 1 first."

@@ -90,7 +90,6 @@ def _pandas_aggregate(path):
 
 
 def test_sql_aggregate_matches_pandas(sample_csv):
-    """The SQL in sql/aggregate.sql must reproduce the same sufficient statistics."""
     sql_df = _sql_aggregate(sample_csv).sort_values("treatment").reset_index(drop=True)
     ref_df = _pandas_aggregate(sample_csv)
 

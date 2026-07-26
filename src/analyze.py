@@ -27,7 +27,6 @@ from src import config
 
 @dataclass
 class ArmMoments:
-    """First and second moments for one arm, reconstructed from sums."""
     n: int
     mean_y: float
     var_y: float
