@@ -23,8 +23,6 @@ from scipy import stats
 from src import config
 
 
-# --- Moments from sufficient statistics -------------------------------------
-
 @dataclass
 class ArmMoments:
     n: int
@@ -81,8 +79,6 @@ def pool(a: ArmMoments, b: ArmMoments) -> ArmMoments:
     sa, sb = sums(a), sums(b)
     return moments(*[x + y for x, y in zip(sa, sb)])
 
-
-# --- Tests ------------------------------------------------------------------
 
 @dataclass
 class TestResult:
@@ -178,8 +174,6 @@ def unadjusted_test(mt: ArmMoments, mc: ArmMoments) -> TestResult:
         mc.mean_y, mc.var_y, mc.n,
     )
 
-
-# --- CUPED ------------------------------------------------------------------
 
 @dataclass
 class CupedResult:
@@ -376,8 +370,6 @@ def cuped(mt: ArmMoments, mc: ArmMoments, unadjusted: TestResult,
     )
 
 
-# --- Robustness: Lin's estimator --------------------------------------------
-
 def lin_estimator(mt: ArmMoments, mc: ArmMoments,
                   unadjusted: TestResult, alpha=config.ALPHA) -> dict:
     """Regression adjustment with a separate slope per arm.
@@ -423,8 +415,6 @@ def lin_estimator(mt: ArmMoments, mc: ArmMoments,
     }
 
 
-# --- Noncompliance ----------------------------------------------------------
-
 def cace(itt_effect: float, itt_se: float, compliance_rate: float,
          alpha: float = config.ALPHA) -> dict:
     """Effect on the users the treatment actually reached.
@@ -466,8 +456,6 @@ def cace(itt_effect: float, itt_se: float, compliance_rate: float,
         ),
     }
 
-
-# --- Orchestration for this stage -------------------------------------------
 
 def analyse(cells) -> dict:
     """cells: the per-arm sufficient-statistics frame written by stage 1."""

@@ -2,7 +2,7 @@
 # Fetch the Criteo Uplift v2.1 log.
 #
 # The URL printed in the original AdKDD paper (go.criteo.net/...) is dead as of
-# 2026-07 — it 404s, and the S3 bucket behind it returns 403. The file is still
+# 2026-07: it 404s, and the S3 bucket behind it returns 403. The file is still
 # published by Criteo AI Lab on HuggingFace, same bytes, same CC BY-NC-SA 4.0
 # licence.
 set -euo pipefail

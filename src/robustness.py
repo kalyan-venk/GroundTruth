@@ -77,8 +77,6 @@ class SpecResult:
         return d
 
 
-# --- Spark ------------------------------------------------------------------
-
 def _weighted_aggregate(grouped, weight_col, features):
     """Per-arm sufficient statistics under one row-weighting scheme.
 
@@ -156,8 +154,6 @@ def compute_cells(verbose: bool = True) -> dict:
     spark.stop()
     return out
 
-
-# --- Analysis ---------------------------------------------------------------
 
 def evaluate(spec: str, cells: pd.DataFrame) -> SpecResult:
     rows = {int(r.treatment): r for r in cells.itertuples()}

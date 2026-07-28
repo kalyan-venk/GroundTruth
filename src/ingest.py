@@ -28,8 +28,6 @@ import pandas as pd
 from src import config
 
 
-# --- Java -------------------------------------------------------------------
-
 def _resolve_java_home() -> str:
     """Point Spark at JDK 17.
 
@@ -74,8 +72,6 @@ def build_spark():
     )
 
 
-# --- Schema -----------------------------------------------------------------
-
 def _schema():
     from pyspark.sql.types import (
         StructType, StructField, DoubleType, IntegerType,
@@ -113,8 +109,6 @@ def _read_raw(spark):
         .csv(str(src))
     )
 
-
-# --- The pre-assignment covariate ------------------------------------------
 
 def _fit_one_fold(pdf):
     X = pdf[config.FEATURES].to_numpy(dtype=np.float64)
@@ -222,8 +216,6 @@ def _covariate_expr(model):
                       linear(fold_model)).otherwise(expr)
     return expr
 
-
-# --- The aggregation --------------------------------------------------------
 
 def _aggregate(df):
     """One pass, per arm, producing every sum the stats layer needs.

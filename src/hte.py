@@ -66,8 +66,6 @@ class HTEResult:
         return self.__dict__.copy()
 
 
-# --- Fitting from sufficient statistics -------------------------------------
-
 def fit_arm(row, features) -> np.ndarray:
     """OLS coefficients for one arm, from X'X and X'y sums.
 
@@ -102,8 +100,6 @@ def uplift_coefficients(cells: pd.DataFrame, features=None) -> np.ndarray:
     rows = {int(r["treatment"]): r for _, r in cells.iterrows()}
     return fit_arm(rows[1], features) - fit_arm(rows[0], features)
 
-
-# --- Spark: score, bin, aggregate -------------------------------------------
 
 def compute_bins(verbose: bool = True) -> pd.DataFrame:
     from pyspark.sql import functions as F
@@ -168,8 +164,6 @@ def compute_bins(verbose: bool = True) -> pd.DataFrame:
     spark.stop()
     return out
 
-
-# --- Analysis ---------------------------------------------------------------
 
 def analyse(bins: pd.DataFrame) -> HTEResult:
     from scipy import stats

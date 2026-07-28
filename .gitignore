@@ -217,7 +217,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# GroundTruth — project data
+# GroundTruth project data
 # Raw Criteo log (~311MB gz / ~3.5GB csv) and the Spark parquet aggregate.
 # Regenerate with: bash scripts/get_data.sh  then  python -m src.run
 data/

@@ -57,10 +57,10 @@ and on this dataset three of them fire.
 | check | asks | result here |
 |---|---|---|
 | SRM | do the arms have the right *number* of users? | pass, suspiciously well |
-| under-dispersion | is the split *too* close to design? | **fires** — ratio is exactly 17:3 |
-| row-order | is assignment correlated with position in the file? | **fires** — 13% to 100% by block |
-| balance | do the arms hold the same *kind* of user? | **fires** — all 12 features differ |
-| specification curve | does the answer depend on a cleaning choice? | **fires** — 1.44x spread |
+| under-dispersion | is the split *too* close to design? | **fires**: ratio is exactly 17:3 |
+| row-order | is assignment correlated with position in the file? | **fires**: 13% to 100% by block |
+| balance | do the arms hold the same *kind* of user? | **fires**: all 12 features differ |
+| specification curve | does the answer depend on a cleaning choice? | **fires**: 1.44x spread |
 | peeking | would early looks have inflated the error rate? | 28.8% at 30 looks |
 
 ### SRM passes, and that is the problem
@@ -70,7 +70,7 @@ The split is 85.00/15.00, off by 2 users out of 13,979,592. Chi-square p =
 
 A chi-square p-value is uniform under the null, so p = 0.9989 is exactly as
 improbable as p = 0.0011. One standard deviation of binomial noise here is
-1,335 users and the arms sit 0.0013 sd apart — random assignment lands that
+1,335 users and the arms sit 0.0013 sd apart. Random assignment lands that
 close 0.11% of the time.
 
 The arm ratio settles it: 5.66667239 against 17/3 = 5.66666667, agreeing to
@@ -113,8 +113,8 @@ they are the same kind of user.
 
 ![covariate balance](results/figures/01-balance.png)
 
-All twelve pre-assignment features differ at overwhelming significance —
-Hotelling F(12, 13,979,579) = 428.6, p = 0, f3 at z = −67 — while every
+All twelve pre-assignment features differ at overwhelming significance
+(Hotelling F(12, 13,979,579) = 428.6, p = 0, f3 at z = -67) while every
 standardised mean difference sits under 0.05, half the conventional 0.1
 threshold. Statistically undeniable, practically trivial by normal standards,
 and still material because the effect is small: the adjustment term is
@@ -165,8 +165,8 @@ experiment without looking. Simulated at these arm sizes:
 | 30 | 28.8% |
 
 The fix is an always-valid confidence sequence, which holds at every sample
-size at once. It costs 3.01x the width here — 5.90 standard errors instead of
-1.96 — and the effect survives it. At 14M rows that is cheap. On a two-week
+size at once. It costs 3.01x the width here (5.90 standard errors instead of
+1.96) and the effect survives it. At 14M rows that is cheap. On a two-week
 test it would not be.
 
 ---
@@ -183,7 +183,7 @@ stats layer never sees a row.
 
 That decision pays off twice more. The full 12-covariate ANCOVA needs X'X and
 X'y, which are already in the file, so it costs no Spark pass at all. The
-uplift model is two OLS fits on the same sums — Spark is needed only to score
+uplift model is two OLS fits on the same sums. Spark is needed only to score
 and bin rows afterwards.
 
 ```
@@ -246,7 +246,7 @@ estimator is valid and gives +2.73 pp among users actually reached.
 
 **Absolute and relative uplift rank users differently.** The top decile has 150x
 the absolute uplift of the bottom, but its *relative* uplift is 43% against 59%
-overall — it converts at 1.81% untreated where everything else is under 0.06%.
+overall. It converts at 1.81% untreated where everything else is under 0.06%.
 Targeting on absolute uplift is right when the budget buys impressions, but the
 ad is not more persuasive on those users. They were already likely to convert.
 
@@ -274,7 +274,7 @@ useful part of the repo.
   zero.
 - **The lead-estimate rule could never not fire.** It routed on a Hotelling
   p-value at N = 14M.
-- **A forest plot nearly shipped a fabricated interval** — point estimate ±8%,
+- **A forest plot nearly shipped a fabricated interval**: point estimate ±8%,
   because the ANCOVA stage was not returning one.
 
 `MISTAKES.md` has the longer list.
@@ -283,7 +283,7 @@ useful part of the repo.
 
 ## Setup
 
-Needs Python 3.12 and **JDK 17**. PySpark 3.5 does not run on JDK 21+ — module
+Needs Python 3.12 and **JDK 17**. PySpark 3.5 does not run on JDK 21+: module
 encapsulation blocks its reflective access to `DirectBuffer` and it fails
 before any of your code runs. `src/ingest.py` resolves JDK 17 through
 `/usr/libexec/java_home` rather than trusting `JAVA_HOME`.

@@ -51,7 +51,6 @@ def main(argv=None) -> int:
     print("GroundTruth - A/B test analysis on the Criteo Uplift log")
     print(BAR)
 
-    # --- 1. Ingest ---------------------------------------------------------
     header("[1/7]", "INGEST - Spark, raw log to sufficient statistics")
     if args.skip_spark and config.CELL_PARQUET.exists() and config.INGEST_JSON.exists():
         ingest_out = json.loads(config.INGEST_JSON.read_text())
@@ -66,7 +65,6 @@ def main(argv=None) -> int:
     arms = ingest_out["arms"]
     n_t, n_c = arms["treatment"]["n"], arms["control"]["n"]
 
-    # --- 2. SRM ------------------------------------------------------------
     header("[2/7]", "SRM - do the arms have the right number of users?")
     srm_res = srm.check(n_t, n_c, expected_treatment_share=args.expected_share)
     srm.report(srm_res, srm.sensitivity(n_t, n_c))
@@ -76,12 +74,10 @@ def main(argv=None) -> int:
         print(f"\n  {srm_res.verdict}")
         return 1
 
-    # --- 3. Balance --------------------------------------------------------
     header("[3/7]", "BALANCE - do the arms contain the same kind of user?")
     bal_res = balance.check(cells)
     balance.report(bal_res)
 
-    # --- 4. Robustness -----------------------------------------------------
     header("[4/7]", "ROBUSTNESS - how much of the answer is a data-handling choice?")
     rob_res = None
     if args.fast or args.skip_spark:
@@ -97,7 +93,6 @@ def main(argv=None) -> int:
     else:
         print("  skipped (run without --fast/--skip-spark to compute)")
 
-    # --- 5. Power ----------------------------------------------------------
     header("[5/7]", "POWER - computed before the effect is looked at")
     pow_res = power.analyse(
         baseline_rate=arms["control"]["conversion_rate"],
@@ -105,7 +100,6 @@ def main(argv=None) -> int:
     )
     power.report(pow_res)
 
-    # --- 6. Effect ---------------------------------------------------------
     header("[6/7]", "EFFECT - unadjusted, CUPED, and peeking")
     ana = analyze.analyse(cells)
     analyze.report(ana)
@@ -121,7 +115,6 @@ def main(argv=None) -> int:
     seq_res = sequential.run(cells)
     sequential.report(seq_res)
 
-    # --- 7. Heterogeneity + verdict ---------------------------------------
     header("[7/7]", "WHO IT WORKS ON, AND THE DECISION")
     hte_res = None
     if args.fast or args.skip_spark:
@@ -163,7 +156,6 @@ def build_summary(ingest_out, srm_res, bal_res, pow_res, ana,
     c = ana["cuped"]
     lin = ana["lin_robustness"]
 
-    # --- the decision ------------------------------------------------------
     #
     # Ship if the effect clears a lift worth having under EVERY specification
     # tried, not merely if p < 0.05 under the one we happened to prefer.

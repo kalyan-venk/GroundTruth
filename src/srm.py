@@ -93,7 +93,6 @@ def check(
     observed_share = n_treatment / n_total
     passed = p_value >= threshold
 
-    # --- the other tail ----------------------------------------------------
     # A chi-square p-value is uniform under the null, so p = 0.999 is exactly
     # as improbable as p = 0.001. Only the low tail means "broken assignment",
     # but the high tail means something too: the split is closer to the design

@@ -77,7 +77,6 @@ def check(cells, features=None, smd_threshold: float = SMD_NEGLIGIBLE) -> Balanc
     n_t, mean_t, cov_t = _arm_moments(rows[1], features)
     n_c, mean_c, cov_c = _arm_moments(rows[0], features)
 
-    # --- per-feature standardised mean differences -------------------------
     pooled_sd = np.sqrt((np.diag(cov_t) + np.diag(cov_c)) / 2.0)
     diff = mean_t - mean_c
     smd = np.divide(diff, pooled_sd, out=np.zeros_like(diff), where=pooled_sd > 0)
@@ -100,7 +99,6 @@ def check(cells, features=None, smd_threshold: float = SMD_NEGLIGIBLE) -> Balanc
         for i, f in enumerate(features)
     ]
 
-    # --- Hotelling's T^2 ---------------------------------------------------
     # Two-sample multivariate test on the mean vectors. Uses the pooled
     # covariance and converts to an F statistic:
     #

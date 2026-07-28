@@ -20,8 +20,6 @@ SUMMARY_JSON = REPO_ROOT / "results" / "summary.json"
 FEATURES = [f"f{i}" for i in range(12)]
 RAW_COLUMNS = FEATURES + ["treatment", "conversion", "visit", "exposure"]
 
-# --- Experiment design -----------------------------------------------------
-
 # Criteo's own paper (Diemert et al., AdKDD 2018) states the log was collected
 # under a randomised split with ~85% of users in treatment. That is the design
 # ratio the SRM check tests against. Testing against 50/50 here would be wrong:
@@ -55,8 +53,6 @@ COVARIATE_NAIVE = "visit"    # the tempting-but-wrong choice, kept for contrast
 # a model fitted without it, so the covariate cannot be overfit to the rows it
 # later adjusts.
 COVARIATE_FOLDS = 2
-
-# --- Decision rule ---------------------------------------------------------
 
 # The minimum lift that would make this campaign worth shipping, as a relative
 # effect on the baseline. A p-value answers "is the effect distinguishable from

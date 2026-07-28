@@ -55,8 +55,6 @@ def _save(fig, name):
     return path
 
 
-# --- 1. Balance ------------------------------------------------------------
-
 def love_plot(summary):
     """Standardised mean differences, sorted, against the 0.1 convention.
 
@@ -94,8 +92,6 @@ def love_plot(summary):
     ax.set_xlabel("standardised mean difference", color=INK_2, fontsize=9.5)
     return _save(fig, "01-balance.png")
 
-
-# --- 2. Power --------------------------------------------------------------
 
 def power_curve(summary):
     """Users required against the effect you want to detect.
@@ -142,8 +138,6 @@ def power_curve(summary):
     return _save(fig, "02-power.png")
 
 
-# --- 3. Forest -------------------------------------------------------------
-
 def forest_plot(summary, ancova=None):
     e = summary["effect"]
     rows = [
@@ -182,8 +176,6 @@ def forest_plot(summary, ancova=None):
     ax.set_ylim(-0.7, len(rows) - 0.3)
     return _save(fig, "03-forest.png")
 
-
-# --- 4. Specification curve ------------------------------------------------
 
 def specification_curve(robustness):
     """What the duplicate-row decision does to the answer.
@@ -224,8 +216,6 @@ def specification_curve(robustness):
         t.set_color(INK_2)
     return _save(fig, "04-specification-curve.png")
 
-
-# --- 5. Uplift -------------------------------------------------------------
 
 def uplift_deciles(hte):
     """Where the incremental conversions actually come from.

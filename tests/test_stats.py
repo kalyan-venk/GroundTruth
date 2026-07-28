@@ -30,8 +30,6 @@ def sums_from(y: np.ndarray, x: np.ndarray):
     )
 
 
-# --- moments ----------------------------------------------------------------
-
 def test_moments_match_numpy():
     y = RNG.binomial(1, 0.03, 50_000).astype(float)
     x = RNG.normal(5.0, 2.0, 50_000)
@@ -62,8 +60,6 @@ def test_pool_matches_concatenation():
     assert pooled.var_x == pytest.approx(direct.var_x, rel=1e-9)
     assert pooled.cov_yx == pytest.approx(direct.cov_yx, rel=1e-9)
 
-
-# --- SRM --------------------------------------------------------------------
 
 def test_srm_passes_on_a_clean_split():
     res = srm.check(n_treatment=850_123, n_control=149_877,
@@ -103,8 +99,6 @@ def test_srm_flags_underdispersion():
     assert not noisy.underdispersed
 
 
-# --- Power ------------------------------------------------------------------
-
 def test_required_n_round_trips_to_the_target_power():
     baseline, mde = 0.002, 0.05
     n, _ = power.required_n_balanced(baseline, mde, alpha=0.05, power=0.80)
@@ -132,8 +126,6 @@ def test_smaller_mde_needs_more_users():
              for m in (0.20, 0.10, 0.05, 0.02)]
     assert sizes == sorted(sizes)
 
-
-# --- The unadjusted test ----------------------------------------------------
 
 def test_unadjusted_matches_scipy_on_a_known_effect():
     n_t, n_c, p_t, p_c = 200_000, 200_000, 0.030, 0.025
@@ -270,8 +262,6 @@ def test_no_effect_gives_a_boring_p_value():
     assert res.p_value > 0.01
 
 
-# --- CUPED ------------------------------------------------------------------
-
 def _synthetic_experiment(n_t=400_000, n_c=400_000, rho=0.6, effect=0.01, shift=0.0):
     """Build an experiment where the truth is known by construction.
 
@@ -378,8 +368,6 @@ def test_lin_matches_cuped_when_slopes_are_equal():
     assert lin["test"]["absolute_effect"] == pytest.approx(
         cup.test.absolute_effect, abs=0.002)
 
-
-# --- Balance ----------------------------------------------------------------
 
 def _balance_frame(mean_t, mean_c, n_t=300_000, n_c=300_000, features=("a", "b")):
     import pandas as pd
