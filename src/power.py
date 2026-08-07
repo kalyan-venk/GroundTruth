@@ -7,7 +7,7 @@ becomes a rationalisation. The only input this stage takes from the data is the
 rather than of the treatment effect.
 
 The output is: given a baseline, an effect size worth detecting, alpha and
-power, how many users per arm do you need -- and did the experiment have them?
+power, how many users per arm do you need, and did the experiment have them?
 """
 from __future__ import annotations
 

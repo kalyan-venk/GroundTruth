@@ -2,7 +2,7 @@
 
 The CUPED stage adjusts on one number per user: an OLS index that collapses
 f0..f11 into a single predicted conversion propensity. That is convenient and,
-as it turns out, cheap in information -- the 12-feature fit reaches R^2 = 0.111
+as it turns out, cheap in information. The 12-feature fit reaches R^2 = 0.111
 against the index's 0.106. But "the collapse costs almost nothing" is a claim,
 and claims should be checked rather than asserted, which is what this stage
 does.

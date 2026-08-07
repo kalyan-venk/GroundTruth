@@ -11,7 +11,7 @@ call that nothing in the file settles for you. Three defensible readings:
 
 The pipeline's headline used to be computed under `all` with a one-line
 justification and no check on what the alternatives gave. They give very
-different answers -- the lift ranges from +59% to +85% and SRM flips from a
+different answers: the lift ranges from +59% to +85% and SRM flips from a
 clean pass to a 110-sigma failure. A range that wide, driven by a choice the
 analyst makes rather than by sampling noise, has to be in the output. Reporting
 one specification as though it were the answer would be a choice about the
@@ -22,8 +22,8 @@ alternative exists, run it, and if the answer moves, the movement is the
 finding.
 
 What the duplicates actually are matters for reading the table. They contain
-ZERO conversions across 2.22M rows -- outcome-independent duplication would
-predict about 7,700 -- and they are 95.7% treatment. Meanwhile 8 of the 12
+ZERO conversions across 2.22M rows (outcome-independent duplication would
+predict about 7,700) and they are 95.7% treatment. Meanwhile 8 of the 12
 features have fewer than 4,000 distinct values (f1 has 60, f5 132, f11 136).
 So a duplicate is most likely two genuinely different cold users colliding on a
 coarse feature grid, not one user logged twice. That argues for `all` as the

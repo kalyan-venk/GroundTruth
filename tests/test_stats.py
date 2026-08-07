@@ -179,7 +179,7 @@ def test_adjusted_lift_uses_the_adjusted_baseline():
 
     Regression test. Dividing an adjusted numerator by the unadjusted control
     mean reported +50.76% where the consistent figure was +47.27%. It is the
-    wrong denominator under CUPED's own premise -- the argument for adjusting
+    wrong denominator under CUPED's own premise. The argument for adjusting
     is that the unadjusted control mean carries the imbalance.
     """
     mt, mc = _synthetic_experiment(rho=0.7, effect=0.01, shift=0.05)
@@ -296,7 +296,7 @@ def test_cuped_does_not_move_the_point_estimate_when_arms_are_balanced():
     randomisation the arms differ on X by sampling noise, CUPED corrects that
     difference, and the correction is theta * se(X_t - X_c) regardless of how
     big the effect is. A small effect therefore moves a long way in percentage
-    terms for entirely innocent reasons -- an earlier version of this test
+    terms for entirely innocent reasons. An earlier version of this test
     asserted <5% and failed at 16% on data that was behaving perfectly.
 
     The right yardstick is the shift against that chance benchmark. Roughly 1x
@@ -404,8 +404,8 @@ def test_balance_catches_a_planted_shift():
 def test_hotelling_catches_a_shift_no_single_feature_shows():
     """The case univariate checks miss.
 
-    Two features each shifted by 0.02 sd -- individually well under any
-    threshold -- but shifted together along a correlated direction. The joint
+    Two features each shifted by 0.02 sd (individually well under any
+    threshold) but shifted together along a correlated direction. The joint
     test should see what twelve separate t-tests would wave through.
     """
     frame = _balance_frame((0.02, 0.02), (0.0, 0.0), n_t=2_000_000, n_c=2_000_000)

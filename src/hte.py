@@ -28,7 +28,7 @@ the rows afterwards.
 
 Cross-fitted, for a reason that bites much harder here than it did for CUPED.
 An uplift score fitted and evaluated on the same rows will show heterogeneity
-whether or not any exists -- the model chases noise, the top decile is the
+whether or not any exists: the model chases noise, the top decile is the
 rows where noise happened to be positive, and the Qini curve looks great. Rows
 are hashed into folds; the score applied to a row comes from models fitted
 without it.
@@ -144,7 +144,7 @@ def compute_bins(verbose: bool = True) -> pd.DataFrame:
     # Rank into equal-size bins by score. ntile over a full 14M-row ordering is
     # a single-partition window, which is slow and memory-hungry, so instead
     # take the bin edges from a quantile approximation and bucket with a case
-    # expression -- approxQuantile is a sketch and runs distributed.
+    # expression. approxQuantile is a sketch and runs distributed.
     edges = scored.approxQuantile(
         "uplift_score", [i / N_BINS for i in range(1, N_BINS)], 0.001)
     edges = sorted(set(edges))
