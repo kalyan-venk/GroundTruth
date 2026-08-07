@@ -8,7 +8,7 @@ caveats attached. Full run takes about 80 seconds on a laptop.
 bash scripts/get_data.sh          # 311 MB download
 python -m src.run                 # everything
 python -m src.run --fast          # skip the two extra Spark passes
-python -m pytest tests/ -q        # 28 tests
+python -m pytest tests/ -q        # 29 tests
 ```
 
 Every number here comes from `results/summary.json`, written by that run.
@@ -200,7 +200,7 @@ src/hte.py            two-model uplift, deciles, Qini
 src/plots.py          the five figures
 src/run.py            orchestration and the decision
 sql/                  the same aggregation in SQL, cross-checked in tests
-tests/                28 tests against known-answer data
+tests/                29 tests against known-answer data
 ```
 
 ---
@@ -234,8 +234,8 @@ only and cross-fitted so no row's covariate comes from a model that saw it.
 root of variance, so 10.70% of variance removed is 5.50% off the interval.
 Quoting the first as an interval improvement nearly doubles the claim.
 
-The observed 10.70% also sits below the pooled ρ² of 11.81%, and that is not a
-shortfall. What gets reduced is `var_t/n_t + var_c/n_c`, so each arm's
+The observed 10.70% sits below the pooled ρ² of 11.81%, exactly as the
+arithmetic predicts. What gets reduced is `var_t/n_t + var_c/n_c`, so each arm's
 reduction counts by its share of that sum: 11.98% and 10.34%, control carrying
 78.06%, giving 10.70% exactly.
 
@@ -277,7 +277,9 @@ useful part of the repo.
 - **A forest plot nearly shipped a fabricated interval**: point estimate ±8%,
   because the ANCOVA stage was not returning one.
 
-`MISTAKES.md` has the longer list.
+There is a longer list behind these six, mostly smaller arithmetic slips caught
+the same way: run it, check it against a known answer, fix what does not
+match.
 
 ---
 
