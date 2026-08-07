@@ -3,7 +3,7 @@
 -- The Python in src/ingest.py builds this with the DataFrame API because it
 -- generates 100+ aggregation expressions programmatically. That is the right
 -- tool for a wide, repetitive aggregation. But the logic underneath is a
--- perfectly ordinary GROUP BY, and writing it out makes that visible -- both
+-- perfectly ordinary GROUP BY, and writing it out makes that visible, both
 -- to a reader and to tests/test_sql.py, which runs this query in DuckDB and
 -- asserts it matches the Spark aggregate to 10 significant figures.
 --
@@ -21,7 +21,7 @@ SELECT
     SUM(conversion * conversion)                 AS sum_yy,
 
     -- The naive covariate. Measured during the experiment, kept only as a
-    -- deliberate contrast -- see the CUPED stage.
+    -- deliberate contrast (see the CUPED stage).
     SUM(visit)                                   AS sum_xn,
     SUM(visit * visit)                           AS sum_xnxn,
     SUM(conversion * visit)                      AS sum_yxn,

@@ -223,7 +223,7 @@ def cuped(mt: ArmMoments, mc: ArmMoments, unadjusted: TestResult,
     An earlier draft of this docstring claimed per-arm theta "biases the
     estimate toward zero", which is wrong, and it contradicted the docstring on
     lin_estimator() 130 lines below asserting the opposite. Per-arm slopes are
-    *better*, not worse -- that is Lin's (2013) result, and it is why this
+    *better*, not worse. That is Lin's (2013) result, and it is why this
     module computes both. Pooled theta is the default here because it is what
     "CUPED" conventionally means; Lin is the robustness check. Where they
     disagree, Lin is the one to trust.
@@ -376,8 +376,8 @@ def lin_estimator(mt: ArmMoments, mc: ArmMoments,
 
     Plain CUPED fits one theta to both arms, which quietly assumes the
     covariate relates to the outcome the same way in treatment and control. If
-    the treatment changes that relationship -- if the ad works better on
-    exactly the users the covariate scores highly -- a single pooled theta
+    the treatment changes that relationship (if the ad works better on
+    exactly the users the covariate scores highly), a single pooled theta
     misfits both arms and can make the adjusted estimate *worse* than the
     unadjusted one.
 

@@ -9,7 +9,7 @@
 --   SMD = (mean_treatment - mean_control) / sqrt((var_t + var_c) / 2)
 --
 -- Convention: |SMD| < 0.1 is negligible regardless of sample size. That is the
--- whole reason to compute it rather than a t-test -- at 14M rows a t-test
+-- whole reason to compute it rather than a t-test. At 14M rows a t-test
 -- rejects on differences far too small to matter.
 
 WITH arm_stats AS (

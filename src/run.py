@@ -1,6 +1,6 @@
 """One command, the whole pipeline, and a decision at the end.
 
-    python -m src.run                 everything, ~3 minutes
+    python -m src.run                 everything, ~80 seconds
     python -m src.run --skip-spark    reuse cached aggregates, stats only
     python -m src.run --fast          skip the two extra Spark passes
 
@@ -161,7 +161,7 @@ def build_summary(ingest_out, srm_res, bal_res, pow_res, ana,
     # tried, not merely if p < 0.05 under the one we happened to prefer.
     #
     # Two changes from the naive rule. First, the bar is a lift that pays for
-    # itself rather than a lift distinguishable from zero -- with 14M rows those
+    # itself rather than a lift distinguishable from zero. With 14M rows those
     # are wildly different bars, and only the first is a business question.
     # Second, the test is the weakest lower bound across the specification
     # curve, so a conclusion that survives only under a favourable
@@ -176,8 +176,8 @@ def build_summary(ingest_out, srm_res, bal_res, pow_res, ana,
     marginal = (not ship) and worst_lower_bound > 0
 
     # Which single number to quote when someone insists on one. Adjustment wins
-    # here not because a p-value says the arms are imbalanced -- at this N that
-    # test always rejects and the rule would be decorative -- but because the
+    # here not because a p-value says the arms are imbalanced (at this N that
+    # test always rejects and the rule would be decorative) but because the
     # specification curve shows the adjusted estimate is roughly 3.5x less
     # sensitive to the duplicate-row decision than the raw one.
     if rob_res and rob_res.get("adjustment_stability_gain", 0) > 1.5:

@@ -2,8 +2,8 @@
 
 SRM asks one question: did users land in the arms in the proportion the
 experiment was designed to produce? If they did not, something upstream of the
-metric is broken -- a bot filter that fires on one arm, a redirect that drops
-users, a logging join that loses rows -- and every effect estimate downstream
+metric is broken (a bot filter that fires on one arm, a redirect that drops
+users, a logging join that loses rows) and every effect estimate downstream
 inherits that corruption. Microsoft's ExP team reports that a large fraction of
 experiments flagged for SRM turn out to have results that reverse once fixed.
 
@@ -73,7 +73,7 @@ def check(
     the costs: this check runs on every experiment you ever ship, so at 0.05
     one in twenty healthy experiments gets blocked for no reason, and the
     engineer's time is spent on false alarms instead of real breakage. A real
-    SRM is a systems bug, and systems bugs produce absurd p-values -- 1e-12,
+    SRM is a systems bug, and systems bugs produce absurd p-values: 1e-12,
     not 0.04. Moving the bar to 0.001 costs almost nothing in detection power
     and removes nearly all of the noise. We use 0.001.
     """

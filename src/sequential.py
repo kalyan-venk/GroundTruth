@@ -8,7 +8,7 @@ to call it early because the number looks good.
 That habit breaks the guarantee. A p-value under 0.05 means "under the null,
 this happens 5% of the time" only if you look once. Look repeatedly and stop
 the first time you see p < 0.05, and you are sampling the minimum of a random
-walk against a fixed boundary -- which crosses far more often than 5%. Peek
+walk against a fixed boundary, which crosses far more often than 5%. Peek
 daily for a month and the actual false-positive rate is roughly a quarter, not
 a twentieth. Left running forever, a random walk crosses any fixed boundary
 with probability 1.
@@ -98,7 +98,7 @@ def always_valid_interval(mean_t, var_t, n_t, mean_c, var_c, n_c,
 
     where rho tunes which sample size the boundary is tightest at. The extra
     width is the price of being allowed to look whenever you want, and it
-    shrinks only logarithmically as n grows -- so at 14M rows it costs little,
+    shrinks only logarithmically as n grows, so at 14M rows it costs little,
     while at 1,000 rows it would cost a lot.
 
     Set rho to the effective n by default, which puts the boundary's tightest

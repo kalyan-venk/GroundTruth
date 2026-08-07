@@ -1,7 +1,7 @@
 """Stage 1 - ingest the raw Criteo log in Spark and collapse it to sufficient statistics.
 
-The design idea worth understanding here: every test this pipeline runs -- the
-chi-square SRM check, the two-proportion z-test, and CUPED -- depends on the raw
+The design idea worth understanding here: every test this pipeline runs (the
+chi-square SRM check, the two-proportion z-test, and CUPED) depends on the raw
 13.9M rows only through a handful of sums. So Spark's job is to compute those
 sums, and the driver never sees more than a few dozen numbers.
 
@@ -90,7 +90,7 @@ def _read_raw(spark):
     """Read the raw log with an explicit schema.
 
     inferSchema on a 3 GB CSV costs an extra full pass over the file for no
-    benefit -- we already know the types. Declaring them also means a
+    benefit. We already know the types. Declaring them also means a
     malformed row fails loudly instead of silently widening a column to string.
     """
     src = config.RAW_CSV if config.RAW_CSV.exists() else config.RAW_GZ
@@ -133,7 +133,7 @@ def _fit_covariate_model(df, n_folds: int = 2, seed: int = 7):
 
     CUPED needs a covariate that is (a) correlated with the outcome and (b)
     unaffected by treatment. The kickstart suggests `visit`, but `visit` is
-    measured during the experiment and is itself moved by the ad -- adjusting
+    measured during the experiment and is itself moved by the ad, so adjusting
     on it would bias the very effect we are trying to estimate. The f-features
     are user attributes fixed before assignment, so they are safe.
 
@@ -141,7 +141,7 @@ def _fit_covariate_model(df, n_folds: int = 2, seed: int = 7):
     into one: fit conversion ~ f0..f11 by OLS and use the fitted value as X.
     This is the standard "CUPED with a learned covariate" trick (Guo et al.'s
     MLRATE). A linear probability model on a binary outcome is not calibrated,
-    but calibration is irrelevant here -- we only need something correlated
+    but calibration is irrelevant here. We only need something correlated
     with Y, and theta rescales it anyway.
 
     *Control rows only.* Fitting on treatment rows would let the treatment
@@ -156,9 +156,9 @@ def _fit_covariate_model(df, n_folds: int = 2, seed: int = 7):
 
     An earlier version claimed a "held-out sample" in this docstring while the
     caller applied a single model to every row including the ones it was fitted
-    on. Nothing was held out. The effect was negligible here -- 13 parameters
+    on. Nothing was held out. The effect was negligible here (13 parameters
     on 500k rows does not overfit, and the in-sample and full-sample R^2 agree
-    to three digits -- but a claim in a docstring is a claim, and this one was
+    to three digits), but a claim in a docstring is a claim, and this one was
     false about the code directly beneath it.
     """
     from pyspark.sql import functions as F
@@ -226,9 +226,9 @@ def _aggregate(df):
 
     We also emit the full 12x12 feature cross-product matrix per arm. Those 78
     extra sums cost one more expression in the same pass and they are what
-    makes an exact Hotelling T2 balance test possible on the driver -- testing
-    whether the two arms contain the same kind of user, not merely the same
-    number of them.
+    makes an exact Hotelling T2 balance test possible on the driver. That test
+    asks whether the two arms contain the same kind of user, not merely the
+    same number of them.
     """
     from pyspark.sql import functions as F
 
@@ -251,7 +251,7 @@ def _aggregate(df):
     for f in config.FEATURES:
         aggs.append(F.sum(F.col(f)).alias(f"sum_{f}"))
         # sum(f_i * Y) per arm. Twelve extra sums, and they are what a full
-        # 12-covariate ANCOVA needs -- without them the pipeline can only
+        # 12-covariate ANCOVA needs. Without them the pipeline can only
         # adjust on the collapsed index.
         aggs.append(F.sum(F.col(f) * Y).alias(f"sum_{f}_y"))
     for i, fi in enumerate(config.FEATURES):
